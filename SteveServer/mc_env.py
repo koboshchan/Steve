@@ -36,8 +36,10 @@ class MinecraftPvPEnv(gym.Env):
         # 18-19. Normalized Opponent look angles: opp_yaw_offset / 180.0, opp_pitch_offset / 90.0
         # 20. Swing Cooldown (0.0 to 1.0)
         # 21-24. Wall distances (front, right, back, left) normalized: min(dist / 50.0, 1.0)
+        # 25-26. Absolute look angles: pitch / 90.0, yaw (normalized to [-1, 1])
+        # 27-41. Action history (last 3 ticks, 5 actions per tick): normalized actions
         self.observation_space = spaces.Box(
-            low=-np.inf, high=np.inf, shape=(24,), dtype=np.float32
+            low=-np.inf, high=np.inf, shape=(41,), dtype=np.float32
         )
 
         # Communication queues for async WebSocket interaction
@@ -50,9 +52,13 @@ class MinecraftPvPEnv(gym.Env):
             "spacing": 0.0, "miss_penalty": 0.0, "survival": 0.0
         }
 
+        # Action history tracker (3 ticks)
+        self.action_history_len = 3
+        self.action_history = [[0, 0, 0, 0, 0] for _ in range(self.action_history_len)]
+
     def _parse_observation(self, state):
-        """Converts state dictionary from Java Mod into flattened float32 numpy array of shape (24,)."""
-        obs = np.zeros(24, dtype=np.float32)
+        """Converts state dictionary from Java Mod into flattened float32 numpy array of shape (41,)."""
+        obs = np.zeros(41, dtype=np.float32)
         
         # Self stats
         obs[0] = float(state.get("hp", 1.0))
@@ -93,6 +99,26 @@ class MinecraftPvPEnv(gym.Env):
         obs[22] = min(float(state.get("back_wall_dist", 50.0)) / 50.0, 1.0)
         obs[23] = min(float(state.get("left_wall_dist", 50.0)) / 50.0, 1.0)
         
+        # Absolute rotation angles
+        obs[24] = float(state.get("pitch", 0.0)) / 90.0
+        obs[25] = (float(state.get("yaw", 0.0)) % 360.0) / 180.0 - 1.0
+        
+        # Append action history (15 features: 3 ticks * 5 action variables)
+        # Normalize actions:
+        # act[0] (0..8) / 8.0
+        # act[1] (0..2) / 2.0
+        # act[2] (0..4) / 4.0
+        # act[3] (0..10) / 10.0
+        # act[4] (0..8) / 8.0
+        idx = 26
+        for act in self.action_history:
+            obs[idx]     = float(act[0]) / 8.0
+            obs[idx + 1] = float(act[1]) / 2.0
+            obs[idx + 2] = float(act[2]) / 4.0
+            obs[idx + 3] = float(act[3]) / 10.0
+            obs[idx + 4] = float(act[4]) / 8.0
+            idx += 5
+            
         return obs
 
     def _calculate_reward(self, prev_state, current_state, action_dict):
@@ -113,12 +139,14 @@ class MinecraftPvPEnv(gym.Env):
             return 0.0
 
         components = {
-            "aim":      0.0,
-            "distance": 0.0,
-            "dmg_dealt": 0.0,
-            "dmg_taken": 0.0,
-            "kill":     0.0,
-            "death":    0.0,
+            "aim":                  0.0,
+            "distance":             0.0,
+            "look_pitch_penalty":   0.0,
+            "facing_away_penalty":  0.0,
+            "dmg_dealt":            0.0,
+            "dmg_taken":            0.0,
+            "kill":                 0.0,
+            "death":                0.0,
         }
 
         hp      = current_state.get("hp",      1.0)
@@ -153,7 +181,19 @@ class MinecraftPvPEnv(gym.Env):
                 -0.5 * ((target_dist - OPTIMAL_DIST) / DIST_SIGMA) ** 2
             )
 
-        # 3. Damage dealt
+        # 3. Look extreme pitch penalty (looking too close to sky or ground)
+        # Minecraft pitch ranges from -90.0 (up) to 90.0 (down).
+        # Punish if looking within 25 degrees of either limit (i.e. abs(pitch) >= 65.0)
+        pitch = current_state.get("pitch", 0.0)
+        if abs(pitch) >= 65.0:
+            components["look_pitch_penalty"] = -0.05
+
+        # 4. Facing away penalty
+        # Punish if the agent is looking more than 150 degrees away from the opponent
+        if aim_error > 150.0:
+            components["facing_away_penalty"] = -0.05
+
+        # 5. Damage dealt
         if opp_hp < prev_opp_hp:
             dmg = prev_opp_hp - opp_hp          # fraction of HP bar lost
             components["dmg_dealt"] = dmg * 10.0  # ~+1.0 per half-heart
@@ -204,6 +244,11 @@ class MinecraftPvPEnv(gym.Env):
         mouse_x_idx = int(action[3])
         mouse_y_idx = int(action[4])
         
+        # Update action history buffer
+        self.action_history.append([move_idx, modifier, combat_action, mouse_x_idx, mouse_y_idx])
+        if len(self.action_history) > self.action_history_len:
+            self.action_history.pop(0)
+
         # 1. Movement: 9 options mapped from action[0]
         # 0: idle, 1: w, 2: wd, 3: wa, 4: s, 5: sa, 6: sd, 7: a, 8: d
         move_mappings = {
@@ -284,6 +329,9 @@ class MinecraftPvPEnv(gym.Env):
 
     def reset(self, seed=None, options=None):
         super().reset(seed=seed)
+        
+        # Reset action history
+        self.action_history = [[0, 0, 0, 0, 0] for _ in range(self.action_history_len)]
         
         if self.ws_queue is not None:
             # Grab the next state from the client and return immediately.

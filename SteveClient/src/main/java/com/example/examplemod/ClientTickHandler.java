@@ -84,6 +84,8 @@ public class ClientTickHandler {
         state.addProperty("y_ground", mc.thePlayer.posY - Math.floor(mc.thePlayer.posY));
         state.addProperty("is_sprinting", mc.thePlayer.isSprinting());
         state.addProperty("is_grounded", mc.thePlayer.onGround);
+        state.addProperty("pitch", mc.thePlayer.rotationPitch);
+        state.addProperty("yaw", mc.thePlayer.rotationYaw);
         
         // Active item
         int activeItemVal = 0; // default 0: Sword

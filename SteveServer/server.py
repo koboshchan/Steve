@@ -47,11 +47,16 @@ class WebSocketCoordinator:
         self.latest_state = None
         self.prev_state = None
         self.state_received = asyncio.Event()
+        self.obs_history = []
+        self.n_stack = 4
 
     async def handle_client(self, websocket):
         self.websocket = websocket
         self.state_received.clear()
         self.prev_state = None
+        self.obs_history = []
+        # Reset action history on dummy_env for a fresh client session
+        dummy_env.action_history = [[0, 0, 0, 0, 0] for _ in range(dummy_env.action_history_len)]
         print("Minecraft Client Successfully Connected!")
         
         try:
@@ -64,8 +69,17 @@ class WebSocketCoordinator:
                 # 2. Extract features for model inference
                 obs = dummy_env._parse_observation(state)
                 
-                # 3. Model Predict (forward pass)
-                action, _states = model.predict(obs, deterministic=True)
+                # Stack observations to match training frame stacking
+                if not self.obs_history:
+                    # Initial tick: repeat the first observation vector 4 times
+                    self.obs_history = [obs] * self.n_stack
+                else:
+                    self.obs_history.append(obs)
+                    self.obs_history.pop(0)
+                stacked_obs = np.concatenate(self.obs_history)
+                
+                # 3. Model Predict (forward pass using stacked observations)
+                action, _states = model.predict(stacked_obs, deterministic=True)
                 
                 # 4. Convert model action space outputs to WebSocket response commands
                 move_idx = int(action[0])
@@ -73,6 +87,11 @@ class WebSocketCoordinator:
                 combat_action = int(action[2])
                 mouse_x_idx = int(action[3])
                 mouse_y_idx = int(action[4])
+
+                # Update dummy_env's action history for next tick's parse_observation
+                dummy_env.action_history.append([move_idx, modifier, combat_action, mouse_x_idx, mouse_y_idx])
+                if len(dummy_env.action_history) > dummy_env.action_history_len:
+                    dummy_env.action_history.pop(0)
 
                 # 0: idle, 1: w, 2: wd, 3: wa, 4: s, 5: sa, 6: sd, 7: a, 8: d
                 move_mappings = {
@@ -147,9 +166,11 @@ class WebSocketCoordinator:
                 dmg_taken  = reward_components.get('dmg_taken',  0.0)
                 aim        = reward_components.get('aim',        0.0)
                 dist       = reward_components.get('distance',   0.0)
+                pitch_pen  = reward_components.get('look_pitch_penalty', 0.0)
+                away_pen   = reward_components.get('facing_away_penalty', 0.0)
                 kill       = reward_components.get('kill',       0.0)
                 death      = reward_components.get('death',      0.0)
-                l3 = f"COMB: Move: {move_str:<12} | Combat: {combat_word:<8} | Mouse: ({mouse_delta_x:>+5.1f}, {mouse_delta_y:>+5.1f}) | LookOff: (Yaw: {opp_yaw_offset:>+6.1f}, Pitch: {opp_pitch_offset:>+6.1f}) | Reward: {reward:>+6.3f} (Aim: {aim:>+5.3f} | Dist: {dist:>+5.3f} | Dmg: {dmg_dealt:>+4.1f}/{dmg_taken:>+4.1f} | Kill: {kill:>+4.1f} | Death: {death:>+4.1f})"
+                l3 = f"COMB: Move: {move_str:<12} | Combat: {combat_word:<8} | Mouse: ({mouse_delta_x:>+5.1f}, {mouse_delta_y:>+5.1f}) | LookOff: (Yaw: {opp_yaw_offset:>+6.1f}, Pitch: {opp_pitch_offset:>+6.1f}) | Reward: {reward:>+6.3f} (Aim: {aim:>+5.3f} | Dist: {dist:>+5.3f} | PitchPen: {pitch_pen:>+5.2f} | AwayPen: {away_pen:>+5.2f} | Dmg: {dmg_dealt:>+4.1f}/{dmg_taken:>+4.1f} | Kill: {kill:>+4.1f} | Death: {death:>+4.1f})"
 
                 # Line 4: Map info
                 front_dist = state.get("front_wall_dist", 50.0)
@@ -172,6 +193,7 @@ class WebSocketCoordinator:
         finally:
             self.websocket = None
             self.prev_state = None
+            self.obs_history = []
 
 coordinator = WebSocketCoordinator()
 

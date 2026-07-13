@@ -14,7 +14,7 @@ import time
 from websockets.server import serve
 from stable_baselines3 import PPO
 from stable_baselines3.common.callbacks import BaseCallback
-from stable_baselines3.common.vec_env import DummyVecEnv
+from stable_baselines3.common.vec_env import DummyVecEnv, VecFrameStack
 from copy import deepcopy
 from tqdm import tqdm
 from mc_env import MinecraftPvPEnv
@@ -129,9 +129,11 @@ class TqdmCallback(BaseCallback):
                     dmg_taken  = reward_components.get('dmg_taken',  0.0)
                     aim        = reward_components.get('aim',        0.0)
                     dist       = reward_components.get('distance',   0.0)
+                    pitch_pen  = reward_components.get('look_pitch_penalty', 0.0)
+                    away_pen   = reward_components.get('facing_away_penalty', 0.0)
                     kill       = reward_components.get('kill',       0.0)
                     death      = reward_components.get('death',      0.0)
-                    l3 = f"C{idx} COMB: Move: {move_str:<12} | Combat: {combat_word:<8} | Mouse: ({mouse_delta_x:>+5.1f}, {mouse_delta_y:>+5.1f}) | LookOff: (Yaw: {opp_yaw_offset:>+6.1f}, Pitch: {opp_pitch_offset:>+6.1f}) | Reward: {reward:>+6.3f} (Aim: {aim:>+5.3f} | Dist: {dist:>+5.3f} | Dmg: {dmg_dealt:>+4.1f}/{dmg_taken:>+4.1f} | Kill: {kill:>+4.1f} | Death: {death:>+4.1f})"
+                    l3 = f"C{idx} COMB: Move: {move_str:<12} | Combat: {combat_word:<8} | Mouse: ({mouse_delta_x:>+5.1f}, {mouse_delta_y:>+5.1f}) | LookOff: (Yaw: {opp_yaw_offset:>+6.1f}, Pitch: {opp_pitch_offset:>+6.1f}) | Reward: {reward:>+6.3f} (Aim: {aim:>+5.3f} | Dist: {dist:>+5.3f} | PitchPen: {pitch_pen:>+5.2f} | AwayPen: {away_pen:>+5.2f} | Dmg: {dmg_dealt:>+4.1f}/{dmg_taken:>+4.1f} | Kill: {kill:>+4.1f} | Death: {death:>+4.1f})"
                     
                     front_dist = state.get("front_wall_dist", 50.0)
                     right_dist = state.get("right_wall_dist", 50.0)
@@ -379,11 +381,11 @@ def training_worker(total_steps, resume=False):
         for future in concurrent.futures.as_completed(futures):
             future.result()   # re-raise any ConnectionDroppedException
 
-    # Recreate vectorized environments matching exact client slot indexes
     def make_env(env_idx):
         return lambda: MinecraftPvPEnv(websocket_server_queue=bridges[env_idx], env_idx=env_idx)
         
     envs = ThreadedVecEnv([make_env(i) for i in range(num_envs)])
+    envs = VecFrameStack(envs, n_stack=4)
     
     model_path = "ppo_minecraft_pvp"
     
@@ -420,16 +422,20 @@ def training_worker(total_steps, resume=False):
         model.learn(total_timesteps=total_steps, callback=TqdmCallback(total_steps), reset_num_timesteps=False)
         model.save(model_path)
         print(f"Training completed! Saved model to '{model_path}.zip'")
+        os._exit(0)
     except ConnectionDroppedException:
         print("One or more clients disconnected. Saving model progress...")
         model.save(model_path)
+        os._exit(0)
     except KeyboardInterrupt:
         print("\nTraining interrupted by user (Ctrl+C). Saving model progress...")
         model.save(model_path)
         print(f"Model saved successfully to '{model_path}.zip'. Exiting.")
+        os._exit(0)
     except Exception as e:
         print(f"Training interrupted due to error: {e}")
         model.save(model_path)
+        os._exit(1)
 
 def main():
     parser = argparse.ArgumentParser(description="Train the Steve Minecraft PvP PPO agent.")
