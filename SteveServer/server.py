@@ -8,6 +8,7 @@ import numpy as np
 import gymnasium as gym
 from websockets.server import serve
 from stable_baselines3 import PPO
+from stable_baselines3.common.vec_env import DummyVecEnv, VecFrameStack
 from mc_env import MinecraftPvPEnv
 
 # 1. Hardware Detection System
@@ -25,7 +26,9 @@ else:
     print("Using Hardware Interface: CPU")
 
 # 2. Initialize Gym Environment and Model
-dummy_env = MinecraftPvPEnv()
+raw_env = MinecraftPvPEnv()
+dummy_env = DummyVecEnv([lambda: raw_env])
+dummy_env = VecFrameStack(dummy_env, n_stack=4)
 model_path = "ppo_minecraft_pvp"
 
 if os.path.exists(model_path + ".zip"):
@@ -55,8 +58,8 @@ class WebSocketCoordinator:
         self.state_received.clear()
         self.prev_state = None
         self.obs_history = []
-        # Reset action history on dummy_env for a fresh client session
-        dummy_env.action_history = [[0, 0, 0, 0, 0] for _ in range(dummy_env.action_history_len)]
+        # Reset action history on raw_env for a fresh client session
+        raw_env.action_history = [[0, 0, 0, 0, 0] for _ in range(raw_env.action_history_len)]
         print("Minecraft Client Successfully Connected!")
         
         try:
@@ -67,7 +70,7 @@ class WebSocketCoordinator:
                 self.state_received.set()
                 
                 # 2. Extract features for model inference
-                obs = dummy_env._parse_observation(state)
+                obs = raw_env._parse_observation(state)
                 
                 # Stack observations to match training frame stacking
                 if not self.obs_history:
@@ -88,10 +91,10 @@ class WebSocketCoordinator:
                 mouse_x_idx = int(action[3])
                 mouse_y_idx = int(action[4])
 
-                # Update dummy_env's action history for next tick's parse_observation
-                dummy_env.action_history.append([move_idx, modifier, combat_action, mouse_x_idx, mouse_y_idx])
-                if len(dummy_env.action_history) > dummy_env.action_history_len:
-                    dummy_env.action_history.pop(0)
+                # Update raw_env's action history for next tick's parse_observation
+                raw_env.action_history.append([move_idx, modifier, combat_action, mouse_x_idx, mouse_y_idx])
+                if len(raw_env.action_history) > raw_env.action_history_len:
+                    raw_env.action_history.pop(0)
 
                 # 0: idle, 1: w, 2: wd, 3: wa, 4: s, 5: sa, 6: sd, 7: a, 8: d
                 move_mappings = {
@@ -124,8 +127,8 @@ class WebSocketCoordinator:
                 reward = 0.0
                 reward_components = {}
                 if self.prev_state is not None:
-                    reward = dummy_env._calculate_reward(self.prev_state, state, response)
-                    reward_components = dummy_env.last_reward_components
+                    reward = raw_env._calculate_reward(self.prev_state, state, response)
+                    reward_components = raw_env.last_reward_components
                 self.prev_state = state
 
                 # Print telemetry info (dynamically updating in terminal)
