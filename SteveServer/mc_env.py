@@ -184,20 +184,20 @@ class MinecraftPvPEnv(gym.Env):
         # 5. Damage dealt
         if opp_hp < prev_opp_hp:
             dmg = prev_opp_hp - opp_hp          # fraction of HP bar lost
-            components["dmg_dealt"] = dmg * 10.0  # ~+1.0 per half-heart
+            components["dmg_dealt"] = dmg * 100.0  # ~+5.0 per half-heart (10.0 per full heart)
 
             # Kill bonus
             if opp_hp <= 0.0:
-                components["kill"] = 5.0
+                components["kill"] = 50.0
 
-        # 4. Damage taken
+        # 6. Damage taken
         if hp < prev_hp:
             dmg = prev_hp - hp
-            components["dmg_taken"] = -dmg * 8.0   # ~-0.8 per half-heart
+            components["dmg_taken"] = -dmg * 80.0   # ~-4.0 per half-heart
 
             # Death penalty
             if hp <= 0.0:
-                components["death"] = -5.0
+                components["death"] = -50.0
 
         reward = sum(components.values())
         self.last_reward_components = components
