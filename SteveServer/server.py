@@ -35,7 +35,10 @@ else:
     print("WARNING: No trained model ('ppo_minecraft_pvp.zip') was found.")
     print("Initializing a brand-new model with RANDOM weights.")
     print("To train the model, run: python train.py")
-    model = PPO("MlpPolicy", dummy_env, verbose=1, device=device)
+    policy_kwargs = dict(
+        net_arch=dict(pi=[256, 256], vf=[256, 256])
+    )
+    model = PPO("MlpPolicy", dummy_env, verbose=1, device=device, policy_kwargs=policy_kwargs)
 
 class WebSocketCoordinator:
     """Coordinates between the async WebSocket loop and gym environment step calls."""

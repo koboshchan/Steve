@@ -385,6 +385,9 @@ def training_worker(total_steps):
         
     envs = ThreadedVecEnv([make_env(i) for i in range(num_envs)])
     
+    policy_kwargs = dict(
+        net_arch=dict(pi=[256, 256], vf=[256, 256])
+    )
     model = PPO(
         policy="MlpPolicy",
         env=envs,
@@ -396,7 +399,8 @@ def training_worker(total_steps):
         gae_lambda=0.95,
         clip_range=0.2,
         verbose=0,
-        device=device
+        device=device,
+        policy_kwargs=policy_kwargs
     )
     
     print(f"Starting actual RL learning loop (total_timesteps={total_steps}) for {num_envs} environments...")

@@ -1,0 +1,16 @@
+name: steve_server_metal
+channels:
+  - pytorch
+  - conda-forge
+  - defaults
+dependencies:
+  - python=3.10
+  - pip
+  - numpy
+  - websockets
+  - tqdm
+  - pytorch
+  - torchvision
+  - pip:
+    - gymnasium==0.29.1
+    - stable-baselines3==2.3.2
