@@ -110,6 +110,17 @@ public class ClientTickHandler {
         state.addProperty("lime_dye_slot", limeDyeSlot);
         state.addProperty("in_match", inMatch);
 
+        // Get fishing rod durability ratio
+        double rodDurability = 1.0;
+        int rodSlotIndex = findRodSlot();
+        if (rodSlotIndex != -1) {
+            ItemStack rodStack = mc.thePlayer.inventory.mainInventory[rodSlotIndex];
+            if (rodStack != null && rodStack.isItemStackDamageable()) {
+                rodDurability = (double)(rodStack.getMaxDamage() - rodStack.getItemDamage()) / (double)rodStack.getMaxDamage();
+            }
+        }
+        state.addProperty("rod_durability", rodDurability);
+
         // Find closest opponent player
         double closestDist = 999.0;
         EntityPlayer closestEnemy = null;

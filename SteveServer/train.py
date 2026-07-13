@@ -119,7 +119,11 @@ class TqdmCallback(BaseCallback):
                     dmg_dealt = reward_components.get('dmg_dealt', 0.0)
                     dmg_taken = reward_components.get('dmg_taken', 0.0)
                     spacing = reward_components.get('spacing', 0.0)
-                    l3 = f"C{idx} COMB: Move: {move_str:<12} | Combat: {combat_word:<8} | Mouse: ({mouse_delta_x:>+5.1f}, {mouse_delta_y:>+5.1f}) | LookOff: (Yaw: {opp_yaw_offset:>+6.1f}, Pitch: {opp_pitch_offset:>+6.1f}) | Reward: {reward:>+6.3f} (DmgDealt: {dmg_dealt:>+5.2f}, DmgTaken: {dmg_taken:>+5.2f}, Space: {spacing:>+5.2f})"
+                    aim_reward = reward_components.get('aim_reward', 0.0)
+                    aim_back = reward_components.get('aim_back_penalty', 0.0)
+                    far = reward_components.get('dist_far_penalty', 0.0)
+                    dur = reward_components.get('rod_durability_penalty', 0.0)
+                    l3 = f"C{idx} COMB: Move: {move_str:<12} | Combat: {combat_word:<8} | Mouse: ({mouse_delta_x:>+5.1f}, {mouse_delta_y:>+5.1f}) | LookOff: (Yaw: {opp_yaw_offset:>+6.1f}, Pitch: {opp_pitch_offset:>+6.1f}) | Reward: {reward:>+6.3f} (Dmg: {dmg_dealt:>+4.1f}/{dmg_taken:>+4.1f} | Space: {spacing:>+4.2f} | Aim: {aim_reward:>+4.2f} | Back: {aim_back:>+4.2f} | Far: {far:>+4.2f} | Dur: {dur:>+4.2f})"
                     
                     lines.extend([l1, l2, l3])
                 

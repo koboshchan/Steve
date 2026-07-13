@@ -88,7 +88,7 @@ class MinecraftPvPEnv(gym.Env):
         
         return obs
 
-    def _calculate_reward(self, prev_state, current_state):
+    def _calculate_reward(self, prev_state, current_state, action_dict):
         """
         Calculates rewards based on the transition between prev_state and current_state.
         Optimized for 1.8.9 PvP: spacing, hitting, avoiding damage, sprint resetting.
@@ -102,6 +102,10 @@ class MinecraftPvPEnv(gym.Env):
             "dmg_taken": 0.0,
             "spacing": 0.0,
             "miss_penalty": 0.0,
+            "aim_reward": 0.0,
+            "aim_back_penalty": 0.0,
+            "dist_far_penalty": 0.0,
+            "rod_durability_penalty": 0.0,
             "survival": 0.0
         }
 
@@ -141,6 +145,27 @@ class MinecraftPvPEnv(gym.Env):
         if swing_cooldown > 0.8 and prev_swing_cooldown <= 0.1:
             if target_dist > 4.5:
                 components["miss_penalty"] = -0.02
+
+        # 5. Aiming Reward (Encourage keeping target near crosshair within 15-degree cone)
+        yaw_delta = current_state.get("yaw_delta", 0.0)
+        pitch_delta = current_state.get("pitch_delta", 0.0)
+        aim_error = np.sqrt(yaw_delta**2 + pitch_delta**2)
+        if aim_error < 15.0:
+            components["aim_reward"] = 0.01 * (1.0 - (aim_error / 15.0))
+
+        # 6. Facing Backward Punishment (More than 180 degrees off or close to it)
+        if aim_error > 180.0 or abs(yaw_delta) >= 175.0:
+            components["aim_back_penalty"] = -0.05
+
+        # 7. Distance >30 blocks Penalty
+        if target_dist > 30.0:
+            components["dist_far_penalty"] = -0.02
+
+        # 8. Low durability rod use penalty
+        combat_action = action_dict.get("combat_action", 0)
+        rod_durability = current_state.get("rod_durability", 1.0)
+        if combat_action == 3 and rod_durability < 0.25:
+            components["rod_durability_penalty"] = -0.05
 
         reward = sum(components.values())
         self.last_reward_components = components
@@ -214,7 +239,7 @@ class MinecraftPvPEnv(gym.Env):
         self.current_state = new_state
         
         obs = self._parse_observation(self.current_state)
-        reward = self._calculate_reward(prev_state, self.current_state)
+        reward = self._calculate_reward(prev_state, self.current_state, response)
         
         self.last_action_dict = response
         self.last_reward = reward
