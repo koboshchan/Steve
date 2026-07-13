@@ -170,16 +170,17 @@ class WebSocketCoordinator:
                 away_pen   = reward_components.get('facing_away_penalty', 0.0)
                 kill       = reward_components.get('kill',       0.0)
                 death      = reward_components.get('death',      0.0)
-                l3 = f"COMB: Move: {move_str:<12} | Combat: {combat_word:<8} | Mouse: ({mouse_delta_x:>+5.1f}, {mouse_delta_y:>+5.1f}) | LookOff: (Yaw: {opp_yaw_offset:>+6.1f}, Pitch: {opp_pitch_offset:>+6.1f}) | Reward: {reward:>+6.3f} (Aim: {aim:>+5.3f} | Dist: {dist:>+5.3f} | PitchPen: {pitch_pen:>+5.2f} | AwayPen: {away_pen:>+5.2f} | Dmg: {dmg_dealt:>+4.1f}/{dmg_taken:>+4.1f} | Kill: {kill:>+4.1f} | Death: {death:>+4.1f})"
+                l3 = f"COMB: Move: {move_str:<12} | Combat: {combat_word:<8} | Mouse: ({mouse_delta_x:>+5.1f}, {mouse_delta_y:>+5.1f}) | LookOff: (Yaw: {opp_yaw_offset:>+6.1f}, Pitch: {opp_pitch_offset:>+6.1f})"
+                l4 = f"REWD: Reward: {reward:>+6.3f} (Aim: {aim:>+5.3f} | Dist: {dist:>+5.3f} | PitchPen: {pitch_pen:>+5.2f} | AwayPen: {away_pen:>+5.2f} | Dmg: {dmg_dealt:>+4.1f}/{dmg_taken:>+4.1f} | Kill: {kill:>+4.1f} | Death: {death:>+4.1f})"
 
-                # Line 4: Map info
+                # Line 5: Map info
                 front_dist = state.get("front_wall_dist", 50.0)
                 right_dist = state.get("right_wall_dist", 50.0)
                 back_dist = state.get("back_wall_dist", 50.0)
                 left_dist = state.get("left_wall_dist", 50.0)
-                l4 = f"MAP:  Front: {front_dist:>5.1f}m | Back: {back_dist:>5.1f}m | Left: {left_dist:>5.1f}m | Right: {right_dist:>5.1f}m | GroundDist: {y_ground:>5.2f}m"
+                l5 = f"MAP:  Front: {front_dist:>5.1f}m | Back: {back_dist:>5.1f}m | Left: {left_dist:>5.1f}m | Right: {right_dist:>5.1f}m | GroundDist: {y_ground:>5.2f}m"
 
-                lines = [l1, l2, l3, l4]
+                lines = [l1, l2, l3, l4, l5]
                 output_str = "".join([f"\n\033[K{line}" for line in lines])
                 num_lines = len(lines)
                 sys.stdout.write(f"{output_str}\033[{num_lines}A\r")

@@ -133,15 +133,16 @@ class TqdmCallback(BaseCallback):
                     away_pen   = reward_components.get('facing_away_penalty', 0.0)
                     kill       = reward_components.get('kill',       0.0)
                     death      = reward_components.get('death',      0.0)
-                    l3 = f"C{idx} COMB: Move: {move_str:<12} | Combat: {combat_word:<8} | Mouse: ({mouse_delta_x:>+5.1f}, {mouse_delta_y:>+5.1f}) | LookOff: (Yaw: {opp_yaw_offset:>+6.1f}, Pitch: {opp_pitch_offset:>+6.1f}) | Reward: {reward:>+6.3f} (Aim: {aim:>+5.3f} | Dist: {dist:>+5.3f} | PitchPen: {pitch_pen:>+5.2f} | AwayPen: {away_pen:>+5.2f} | Dmg: {dmg_dealt:>+4.1f}/{dmg_taken:>+4.1f} | Kill: {kill:>+4.1f} | Death: {death:>+4.1f})"
+                    l3 = f"C{idx} COMB: Move: {move_str:<12} | Combat: {combat_word:<8} | Mouse: ({mouse_delta_x:>+5.1f}, {mouse_delta_y:>+5.1f}) | LookOff: (Yaw: {opp_yaw_offset:>+6.1f}, Pitch: {opp_pitch_offset:>+6.1f})"
+                    l4 = f"C{idx} REWD: Reward: {reward:>+6.3f} (Aim: {aim:>+5.3f} | Dist: {dist:>+5.3f} | PitchPen: {pitch_pen:>+5.2f} | AwayPen: {away_pen:>+5.2f} | Dmg: {dmg_dealt:>+4.1f}/{dmg_taken:>+4.1f} | Kill: {kill:>+4.1f} | Death: {death:>+4.1f})"
                     
                     front_dist = state.get("front_wall_dist", 50.0)
                     right_dist = state.get("right_wall_dist", 50.0)
                     back_dist = state.get("back_wall_dist", 50.0)
                     left_dist = state.get("left_wall_dist", 50.0)
-                    l4 = f"C{idx} MAP:  Front: {front_dist:>5.1f}m | Back: {back_dist:>5.1f}m | Left: {left_dist:>5.1f}m | Right: {right_dist:>5.1f}m | GroundDist: {y_ground:>5.2f}m"
+                    l5 = f"C{idx} MAP:  Front: {front_dist:>5.1f}m | Back: {back_dist:>5.1f}m | Left: {left_dist:>5.1f}m | Right: {right_dist:>5.1f}m | GroundDist: {y_ground:>5.2f}m"
                     
-                    lines.extend([l1, l2, l3, l4])
+                    lines.extend([l1, l2, l3, l4, l5])
                 
                 # Print output lines below progress bar and restore cursor position dynamically
                 output_str = "".join([f"\n\033[K{line}" for line in lines])
@@ -155,7 +156,7 @@ class TqdmCallback(BaseCallback):
     def _on_training_end(self):
         if self.pbar:
             self.pbar.close()
-        print("\n" * (num_envs * 4 + 2))
+        print("\n" * (num_envs * 5 + 2))
 
 # 1. Hardware Detection
 device = torch.device("cuda" if torch.cuda.is_available() else ("mps" if torch.backends.mps.is_available() else "cpu"))
