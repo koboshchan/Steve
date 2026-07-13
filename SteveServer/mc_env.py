@@ -11,8 +11,9 @@ class MinecraftPvPEnv(gym.Env):
     """
     metadata = {"render_modes": ["human"]}
 
-    def __init__(self, websocket_server_queue=None):
+    def __init__(self, websocket_server_queue=None, env_idx=0):
         super(MinecraftPvPEnv, self).__init__()
+        self.env_idx = env_idx
 
         # Action Space (5 discrete inputs, MultiDiscrete):
         # 0: Movement -> 9 bins (0: idle, 1: w, 2: wd, 3: wa, 4: s, 5: sa, 6: sd, 7: a, 8: d)
@@ -239,7 +240,7 @@ class MinecraftPvPEnv(gym.Env):
         
         if self.ws_queue is not None:
             # Wait for client to connect and send initial state
-            state = self.ws_queue.reset_exchange()
+            state = self.ws_queue.reset_exchange(self.env_idx)
             # If we are in the lobby (lime dye is present), wait for the click and match start
             idle_action = {
                 "forward_back": 0,
