@@ -146,21 +146,21 @@ class WebSocketCoordinator:
                 combat_word = combat_action_map.get(combat_action, "Idle")
 
                 # Line 1: Self Stats (Padded)
-                hp_val = state.get('hp', 1.0) * 10.0
+                hp_val = int(round(state.get('hp', 1.0) * 20))
                 vel_x = state.get('vel_x', 0.0)
                 vel_y = state.get('vel_y', 0.0)
                 vel_z = state.get('vel_z', 0.0)
                 sprint_str = str(state.get('is_sprinting', False))
                 y_ground = float(state.get('y_ground', 0.0))
-                l1 = f"SELF: HP: {hp_val:>4.1f}/10.0 | Vel: ({vel_x:>+6.2f}, {vel_y:>+6.2f}, {vel_z:>+6.2f}) | Sprint: {sprint_str:<5} | GroundDist: {y_ground:>5.2f}m"
+                l1 = f"SELF: HP: {hp_val:>2d}/20 | Vel: ({vel_x:>+6.2f}, {vel_y:>+6.2f}, {vel_z:>+6.2f}) | Sprint: {sprint_str:<5} | GroundDist: {y_ground:>5.2f}m"
 
                 # Line 2: Opponent Stats (Padded)
-                opp_hp_val = state.get('opp_hp', 1.0) * 10.0
+                opp_hp_val = int(round(state.get('opp_hp', 1.0) * 20))
                 target_dist = state.get('target_dist', 999.0)
                 opp_rel_x = state.get('opp_rel_x', 0.0)
                 opp_rel_y = state.get('opp_rel_y', 0.0)
                 opp_rel_z = state.get('opp_rel_z', 0.0)
-                l2 = f"OPP:  HP: {opp_hp_val:>4.1f}/10.0 | Dist: {target_dist:>6.2f}m | RelPos: ({opp_rel_x:>+6.1f}, {opp_rel_y:>+6.1f}, {opp_rel_z:>+6.1f})"
+                l2 = f"OPP:  HP: {opp_hp_val:>2d}/20 | Dist: {target_dist:>6.2f}m | RelPos: ({opp_rel_x:>+6.1f}, {opp_rel_y:>+6.1f}, {opp_rel_z:>+6.1f})"
 
                 # Line 3: Actions & Reward breakdown (Padded)
                 opp_yaw_offset = state.get('opp_yaw_offset', 0.0)
