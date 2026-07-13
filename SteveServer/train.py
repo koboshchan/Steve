@@ -61,6 +61,7 @@ class TqdmCallback(BaseCallback):
         super().__init__(verbose=0)
         self.total_timesteps = total_timesteps
         self.pbar = None
+        self.last_backup_checkpoint = 0
 
     def _on_training_start(self):
         # Create progress bar using sys.stdout to prevent overlap issues with other stdout prints
@@ -73,6 +74,16 @@ class TqdmCallback(BaseCallback):
         in_game_count = sum(1 for info in infos if not info.get("in_lobby", False))
         if in_game_count > 0:
             self.pbar.update(in_game_count)
+            
+        # Save a backup every 15,000 steps
+        current_checkpoint = self.num_timesteps
+        if current_checkpoint // 15000 > self.last_backup_checkpoint // 15000:
+            self.last_backup_checkpoint = (current_checkpoint // 15000) * 15000
+            backup_dir = "backup"
+            os.makedirs(backup_dir, exist_ok=True)
+            backup_path = os.path.join(backup_dir, f"{self.last_backup_checkpoint}_ppo_minecraft_pvp")
+            self.model.save(backup_path)
+            tqdm.write(f"Saved backup checkpoint to: {backup_path}.zip")
         
         # Update metrics every tick (50 ms)
         if True:
