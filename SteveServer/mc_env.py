@@ -140,7 +140,6 @@ class MinecraftPvPEnv(gym.Env):
 
         components = {
             "aim":                  0.0,
-            "distance":             0.0,
             "look_pitch_penalty":   0.0,
             "facing_away_penalty":  0.0,
             "dmg_dealt":            0.0,
@@ -169,17 +168,6 @@ class MinecraftPvPEnv(gym.Env):
         else:
             # Linear penalty scaling from 0.0 (at 100 deg) to -0.2 (at 180 deg)
             components["aim"] = -0.2 * ((aim_error - 100.0) / 80.0)
-
-        # 2. Distance shaping — dense every tick
-        # Gaussian peaked at OPTIMAL_DIST blocks; zero beyond DIST_CUTOFF.
-        # Kept small (0.005) so it guides the agent without dominating game policies.
-        OPTIMAL_DIST = 3.0
-        DIST_SIGMA   = 1.5
-        DIST_CUTOFF  = 20.0
-        if target_dist < DIST_CUTOFF:
-            components["distance"] = 0.005 * np.exp(
-                -0.5 * ((target_dist - OPTIMAL_DIST) / DIST_SIGMA) ** 2
-            )
 
         # 3. Look extreme pitch penalty (looking too close to sky or ground)
         # Minecraft pitch ranges from -90.0 (up) to 90.0 (down).

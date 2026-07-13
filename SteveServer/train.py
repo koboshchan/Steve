@@ -128,13 +128,12 @@ class TqdmCallback(BaseCallback):
                     dmg_dealt  = reward_components.get('dmg_dealt',  0.0)
                     dmg_taken  = reward_components.get('dmg_taken',  0.0)
                     aim        = reward_components.get('aim',        0.0)
-                    dist       = reward_components.get('distance',   0.0)
                     pitch_pen  = reward_components.get('look_pitch_penalty', 0.0)
                     away_pen   = reward_components.get('facing_away_penalty', 0.0)
                     kill       = reward_components.get('kill',       0.0)
                     death      = reward_components.get('death',      0.0)
                     l3 = f"C{idx} COMB: Move: {move_str:<12} | Combat: {combat_word:<8} | Mouse: ({mouse_delta_x:>+5.1f}, {mouse_delta_y:>+5.1f}) | LookOff: (Yaw: {opp_yaw_offset:>+6.1f}, Pitch: {opp_pitch_offset:>+6.1f})"
-                    l4 = f"C{idx} REWD: Reward: {reward:>+6.3f} (Aim: {aim:>+5.3f} | Dist: {dist:>+5.3f} | PitchPen: {pitch_pen:>+5.2f} | AwayPen: {away_pen:>+5.2f} | Dmg: {dmg_dealt:>+4.1f}/{dmg_taken:>+4.1f} | Kill: {kill:>+4.1f} | Death: {death:>+4.1f})"
+                    l4 = f"C{idx} REWD: Reward: {reward:>+6.3f} (Aim: {aim:>+5.3f} | PitchPen: {pitch_pen:>+5.2f} | AwayPen: {away_pen:>+5.2f} | Dmg: {dmg_dealt:>+4.1f}/{dmg_taken:>+4.1f} | Kill: {kill:>+4.1f} | Death: {death:>+4.1f})"
                     
                     front_dist = state.get("front_wall_dist", 50.0)
                     right_dist = state.get("right_wall_dist", 50.0)
