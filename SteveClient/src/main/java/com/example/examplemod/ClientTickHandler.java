@@ -2,13 +2,17 @@ package com.example.examplemod;
 
 import com.google.gson.JsonObject;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.GuiMainMenu;
 import net.minecraft.client.settings.KeyBinding;
 import net.minecraft.entity.player.EntityPlayer;
+import net.minecraft.init.Items;
 import net.minecraft.item.ItemFishingRod;
 import net.minecraft.item.ItemStack;
 import net.minecraft.item.ItemSword;
 import net.minecraft.util.MathHelper;
 import net.minecraft.util.MovingObjectPosition;
+import net.minecraftforge.client.event.ClientChatReceivedEvent;
+import net.minecraftforge.client.event.GuiOpenEvent;
 import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
 import net.minecraftforge.fml.common.gameevent.TickEvent;
 import java.net.URI;
@@ -18,6 +22,8 @@ public class ClientTickHandler {
     private final Minecraft mc = Minecraft.getMinecraft();
     private SteveWebSocketClient ws = null;
     private int reconnectTimer = 0;
+    private int rightClickDelay = 0;
+    private boolean inMatch = false;
 
     public ClientTickHandler() {
         connectToServer();
@@ -40,6 +46,20 @@ public class ClientTickHandler {
             return;
         }
 
+        // Auto-use lime dye if present in hotbar
+        int limeDyeSlot = findLimeDyeSlot();
+        if (limeDyeSlot != -1) {
+            if (rightClickDelay <= 0) {
+                mc.thePlayer.inventory.currentItem = limeDyeSlot;
+                mc.playerController.sendUseItem(mc.thePlayer, mc.theWorld, mc.thePlayer.inventory.getCurrentItem());
+                rightClickDelay = 10; // Cooldown of 10 ticks (0.5 seconds)
+            } else {
+                rightClickDelay--;
+            }
+        } else {
+            rightClickDelay = 0;
+        }
+
         // Auto-reconnect if connection is lost
         if (ws == null || !ws.isOpen()) {
             reconnectTimer++;
@@ -48,6 +68,20 @@ public class ClientTickHandler {
                 connectToServer();
             }
             return;
+        }
+
+        // Determine if we are on PvP Land
+        boolean isPvPLand = false;
+        if (!mc.isSingleplayer() && mc.getCurrentServerData() != null) {
+            String ip = mc.getCurrentServerData().serverIP.toLowerCase();
+            if (ip.contains("pvp.land")) {
+                isPvPLand = true;
+            }
+        }
+
+        // If we are not on PvP Land, force inMatch = true to start training immediately
+        if (!isPvPLand) {
+            inMatch = true;
         }
 
         // 1. GATHER STATE VARIABLES
@@ -70,11 +104,16 @@ public class ClientTickHandler {
         }
         state.addProperty("active_item", activeItemVal);
 
+        // Hotbar detection states
+        state.addProperty("sword_slot", findSwordSlot());
+        state.addProperty("rod_slot", findRodSlot());
+        state.addProperty("lime_dye_slot", limeDyeSlot);
+        state.addProperty("in_match", inMatch);
+
         // Find closest opponent player
         double closestDist = 999.0;
         EntityPlayer closestEnemy = null;
-        List<EntityPlayer> players = mc.theWorld.getEntitiesWithinAABB(EntityPlayer.class, 
-                mc.thePlayer.getEntityBoundingBox().expand(15.0, 8.0, 15.0));
+        List<EntityPlayer> players = mc.theWorld.playerEntities;
         
         for (EntityPlayer enemy : players) {
             if (enemy.getEntityId() == mc.thePlayer.getEntityId()) continue;
@@ -96,7 +135,7 @@ public class ClientTickHandler {
             state.addProperty("opp_rel_z", closestEnemy.posZ - mc.thePlayer.posZ);
             state.addProperty("target_dist", closestDist);
 
-            // Calculate angle deltas to target eye position
+            // Calculate angle deltas to target eye position (how we look at them)
             double diffX = closestEnemy.posX - mc.thePlayer.posX;
             double diffZ = closestEnemy.posZ - mc.thePlayer.posZ;
             double diffY = (closestEnemy.posY + closestEnemy.getEyeHeight()) - (mc.thePlayer.posY + mc.thePlayer.getEyeHeight());
@@ -110,8 +149,23 @@ public class ClientTickHandler {
             
             state.addProperty("yaw_delta", yawDelta);
             state.addProperty("pitch_delta", pitchDelta);
+
+            // Calculate opponent look deltas back to player eye position (how they look at us)
+            double oppToPlayerX = mc.thePlayer.posX - closestEnemy.posX;
+            double oppToPlayerZ = mc.thePlayer.posZ - closestEnemy.posZ;
+            double oppToPlayerY = (mc.thePlayer.posY + mc.thePlayer.getEyeHeight()) - (closestEnemy.posY + closestEnemy.getEyeHeight());
+            
+            double oppTargetYaw = Math.toDegrees(Math.atan2(oppToPlayerZ, oppToPlayerX)) - 90.0;
+            double oppDistXZ = Math.sqrt(oppToPlayerX * oppToPlayerX + oppToPlayerZ * oppToPlayerZ);
+            double oppTargetPitch = -Math.toDegrees(Math.atan2(oppToPlayerY, oppDistXZ));
+            
+            double oppYawDelta = MathHelper.wrapAngleTo180_double(oppTargetYaw - closestEnemy.rotationYaw);
+            double oppPitchDelta = MathHelper.wrapAngleTo180_double(oppTargetPitch - closestEnemy.rotationPitch);
+            
+            state.addProperty("opp_yaw_offset", oppYawDelta);
+            state.addProperty("opp_pitch_offset", oppPitchDelta);
         } else {
-            state.addProperty("opp_hp", 0.0);
+            state.addProperty("opp_hp", 1.0);
             state.addProperty("opp_vel_x", 0.0);
             state.addProperty("opp_vel_y", 0.0);
             state.addProperty("opp_vel_z", 0.0);
@@ -121,6 +175,8 @@ public class ClientTickHandler {
             state.addProperty("target_dist", 999.0);
             state.addProperty("yaw_delta", 0.0);
             state.addProperty("pitch_delta", 0.0);
+            state.addProperty("opp_yaw_offset", 0.0);
+            state.addProperty("opp_pitch_offset", 0.0);
         }
 
         // Swing cooldown/progress
@@ -146,6 +202,14 @@ public class ClientTickHandler {
                 KeyBinding.setKeyBindState(mc.gameSettings.keyBindRight.getKeyCode(), (strafe == 2));
                 KeyBinding.setKeyBindState(mc.gameSettings.keyBindJump.getKeyCode(), (modifier == 2));
                 KeyBinding.setKeyBindState(mc.gameSettings.keyBindSneak.getKeyCode(), (modifier == 1));
+
+                // Force Auto-Sprint if moving forward, not sneaking, and not blocking
+                if (move == 1 && modifier != 1 && combat != 2) {
+                    mc.thePlayer.setSprinting(true);
+                    KeyBinding.setKeyBindState(mc.gameSettings.keyBindSprint.getKeyCode(), true);
+                } else {
+                    KeyBinding.setKeyBindState(mc.gameSettings.keyBindSprint.getKeyCode(), false);
+                }
 
                 // Hotbar sword slot selection logic
                 if (combat == 1 || combat == 2) {
@@ -201,5 +265,52 @@ public class ClientTickHandler {
             }
         }
         return -1;
+    }
+
+    private int findSwordSlot() {
+        for (int i = 0; i < 9; i++) {
+            ItemStack stack = mc.thePlayer.inventory.mainInventory[i];
+            if (stack != null && (stack.getItem() == Items.diamond_sword || stack.getItem() == Items.iron_sword)) {
+                return i;
+            }
+        }
+        return -1;
+    }
+
+    private int findRodSlot() {
+        for (int i = 0; i < 9; i++) {
+            ItemStack stack = mc.thePlayer.inventory.mainInventory[i];
+            if (stack != null && stack.getItem() == Items.fishing_rod) {
+                return i;
+            }
+        }
+        return -1;
+    }
+
+    private int findLimeDyeSlot() {
+        for (int i = 0; i < 9; i++) {
+            ItemStack stack = mc.thePlayer.inventory.mainInventory[i];
+            if (stack != null && stack.getItem() == Items.dye && stack.getItemDamage() == 10) {
+                return i;
+            }
+        }
+        return -1;
+    }
+
+    @SubscribeEvent
+    public void onChatReceived(ClientChatReceivedEvent event) {
+        String message = event.message.getUnformattedText();
+        if (message.contains("The match has started!")) {
+            inMatch = true;
+        } else if (message.contains("MATCH RESULTS") || message.contains("Winner:") || message.contains("Loser:")) {
+            inMatch = false;
+        }
+    }
+
+    @SubscribeEvent
+    public void onGuiOpen(GuiOpenEvent event) {
+        if (event.gui instanceof GuiMainMenu && !(event.gui instanceof SteveMainMenu)) {
+            event.gui = new SteveMainMenu();
+        }
     }
 }
