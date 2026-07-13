@@ -42,7 +42,10 @@ class ThreadBridge:
     def step_exchange(self, action_dict):
         # Called by MinecraftPvPEnv.step() inside the training thread
         self.action_queue.put(action_dict)
-        state = self.state_queue.get()
+        try:
+            state = self.state_queue.get(timeout=10.0)
+        except queue.Empty:
+            raise ConnectionDroppedException("Client idle timeout (kicked or in menu)")
         if state is None:
             raise ConnectionDroppedException("Client disconnected")
         return state
@@ -50,7 +53,10 @@ class ThreadBridge:
     def reset_exchange(self, env_idx):
         # Called by MinecraftPvPEnv.reset() inside the training thread
         tqdm.write(f"Gymnasium Environment {env_idx} resetting, waiting for client tick data...")
-        state = self.state_queue.get()
+        try:
+            state = self.state_queue.get(timeout=10.0)
+        except queue.Empty:
+            raise ConnectionDroppedException("Client idle timeout (kicked or in menu)")
         if state is None:
             raise ConnectionDroppedException("Client disconnected")
         return state
@@ -66,6 +72,8 @@ class TqdmCallback(BaseCallback):
     def _on_training_start(self):
         # Create progress bar using sys.stdout to prevent overlap issues with other stdout prints
         self.pbar = tqdm(total=self.total_timesteps, desc="Training PPO Agent", file=sys.stdout, dynamic_ncols=True)
+        # Prevent historical backups on resume by seeding last_backup_checkpoint with current loaded timesteps
+        self.last_backup_checkpoint = self.model.num_timesteps
 
     def _on_step(self) -> bool:
         # Only count steps from envs that are actually in a match.
@@ -376,7 +384,10 @@ def training_worker(total_steps, resume=False):
         Each call runs in its own thread so all bridges wait in parallel."""
         bridge = bridges[bridge_idx]
         while True:
-            state = bridge.state_queue.get()      # blocks until client sends a tick
+            try:
+                state = bridge.state_queue.get(timeout=10.0)      # blocks until client sends a tick
+            except queue.Empty:
+                raise ConnectionDroppedException(f"Client {bridge_idx} idle timeout before match start")
             if state is None:
                 raise ConnectionDroppedException(f"Client {bridge_idx} disconnected before match start")
             if state.get("in_match", False):
