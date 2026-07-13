@@ -127,22 +127,29 @@ class MinecraftPvPEnv(gym.Env):
         prev_opp_hp = prev_state.get("opp_hp",     1.0)
         target_dist = current_state.get("target_dist", 999.0)
 
-        # 1. Aim reward — dense every tick
+        # 1. Aim reward/penalty — dense every tick
         # Reward peaks when crosshair is dead-on; falls to 0 at 45 degrees.
+        # If target is too far away (> 6.0 blocks), punish aiming to discourage staring from a distance.
         yaw_delta   = current_state.get("yaw_delta",   0.0)
         pitch_delta = current_state.get("pitch_delta", 0.0)
         aim_error = np.sqrt(yaw_delta ** 2 + pitch_delta ** 2)
         AIM_MAX_DEG = 45.0
-        if aim_error < AIM_MAX_DEG and target_dist < 20.0:
-            components["aim"] = 0.04 * (1.0 - aim_error / AIM_MAX_DEG)
+        if aim_error < AIM_MAX_DEG:
+            if target_dist <= 5.0:
+                # Close range: reward aiming at target
+                components["aim"] = 0.04 * (1.0 - aim_error / AIM_MAX_DEG)
+            elif target_dist > 6.0:
+                # Too far: penalize staring/aiming at target from a distance (encourages closing the gap)
+                components["aim"] = -0.02 * (1.0 - aim_error / AIM_MAX_DEG)
 
         # 2. Distance shaping — dense every tick
         # Gaussian peaked at OPTIMAL_DIST blocks; zero beyond DIST_CUTOFF.
+        # Kept small (0.005) so it guides the agent without dominating game policies.
         OPTIMAL_DIST = 3.0
         DIST_SIGMA   = 1.5
         DIST_CUTOFF  = 20.0
         if target_dist < DIST_CUTOFF:
-            components["distance"] = 0.03 * np.exp(
+            components["distance"] = 0.005 * np.exp(
                 -0.5 * ((target_dist - OPTIMAL_DIST) / DIST_SIGMA) ** 2
             )
 

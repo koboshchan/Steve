@@ -326,7 +326,7 @@ def run_websocket_server():
     loop.run_until_complete(start_server())
 
 # 3. Training Worker
-def training_worker(total_steps):
+def training_worker(total_steps, resume=False):
     global num_envs, bridges, training_started
     
     print("Awaiting connection from Minecraft on ws://localhost:8765...")
@@ -385,39 +385,51 @@ def training_worker(total_steps):
         
     envs = ThreadedVecEnv([make_env(i) for i in range(num_envs)])
     
-    policy_kwargs = dict(
-        net_arch=dict(pi=[256, 256], vf=[256, 256])
-    )
-    model = PPO(
-        policy="MlpPolicy",
-        env=envs,
-        learning_rate=3e-4,
-        n_steps=2048,
-        batch_size=64,
-        n_epochs=10,
-        gamma=0.99,
-        gae_lambda=0.95,
-        clip_range=0.2,
-        verbose=0,
-        device=device,
-        policy_kwargs=policy_kwargs
-    )
+    model_path = "ppo_minecraft_pvp"
+    
+    if resume and os.path.exists(model_path + ".zip"):
+        print(f"Resuming training: Loading existing model weights from '{model_path}.zip'...")
+        model = PPO.load(model_path, env=envs, device=device)
+    else:
+        if resume:
+            print(f"WARNING: '--resume' was set, but no existing model checkpoint '{model_path}.zip' was found.")
+            print("Starting a brand-new model from scratch.")
+        else:
+            print("Starting a brand-new model from scratch.")
+            
+        policy_kwargs = dict(
+            net_arch=dict(pi=[256, 256], vf=[256, 256])
+        )
+        model = PPO(
+            policy="MlpPolicy",
+            env=envs,
+            learning_rate=3e-4,
+            n_steps=2048,
+            batch_size=64,
+            n_epochs=10,
+            gamma=0.99,
+            gae_lambda=0.95,
+            clip_range=0.2,
+            verbose=0,
+            device=device,
+            policy_kwargs=policy_kwargs
+        )
     
     print(f"Starting actual RL learning loop (total_timesteps={total_steps}) for {num_envs} environments...")
     try:
         model.learn(total_timesteps=total_steps, callback=TqdmCallback(total_steps), reset_num_timesteps=False)
-        model.save("ppo_minecraft_pvp")
-        print("Training completed! Saved model to 'ppo_minecraft_pvp.zip'")
+        model.save(model_path)
+        print(f"Training completed! Saved model to '{model_path}.zip'")
     except ConnectionDroppedException:
         print("One or more clients disconnected. Saving model progress...")
-        model.save("ppo_minecraft_pvp")
+        model.save(model_path)
     except KeyboardInterrupt:
         print("\nTraining interrupted by user (Ctrl+C). Saving model progress...")
-        model.save("ppo_minecraft_pvp")
-        print("Model saved successfully to 'ppo_minecraft_pvp.zip'. Exiting.")
+        model.save(model_path)
+        print(f"Model saved successfully to '{model_path}.zip'. Exiting.")
     except Exception as e:
         print(f"Training interrupted due to error: {e}")
-        model.save("ppo_minecraft_pvp")
+        model.save(model_path)
 
 def main():
     parser = argparse.ArgumentParser(description="Train the Steve Minecraft PvP PPO agent.")
@@ -427,6 +439,11 @@ def main():
         default=100_000,
         help="Total number of environment steps to train for (default: 100000)."
     )
+    parser.add_argument(
+        "--resume",
+        action="store_true",
+        help="Resume training from the existing model checkpoint ('ppo_minecraft_pvp.zip') if it exists."
+    )
     args = parser.parse_args()
 
     # Start the WebSocket server in a background daemon thread
@@ -434,7 +451,7 @@ def main():
     ws_thread.start()
 
     # Run the training loop in the main thread so it captures Ctrl+C (KeyboardInterrupt)
-    training_worker(total_steps=args.steps)
+    training_worker(total_steps=args.steps, resume=args.resume)
 
 if __name__ == "__main__":
     main()
