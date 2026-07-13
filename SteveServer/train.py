@@ -61,15 +61,18 @@ class TqdmCallback(BaseCallback):
         super().__init__(verbose=0)
         self.total_timesteps = total_timesteps
         self.pbar = None
-        self.step_counter = 0
 
     def _on_training_start(self):
         # Create progress bar using sys.stdout to prevent overlap issues with other stdout prints
         self.pbar = tqdm(total=self.total_timesteps, desc="Training PPO Agent", file=sys.stdout, dynamic_ncols=True)
 
     def _on_step(self) -> bool:
-        self.pbar.update(self.training_env.num_envs)
-        self.step_counter += 1
+        # Only count steps from envs that are actually in a match.
+        # Lobby pass-through steps set {"in_lobby": True} in their info dict.
+        infos = self.locals.get("infos", [{}] * self.training_env.num_envs)
+        in_game_count = sum(1 for info in infos if not info.get("in_lobby", False))
+        if in_game_count > 0:
+            self.pbar.update(in_game_count)
         
         # Update metrics every tick (50 ms)
         if True:
@@ -122,14 +125,13 @@ class TqdmCallback(BaseCallback):
                     opp_pitch_offset = state.get('opp_pitch_offset', 0.0)
                     mouse_delta_x = action.get('mouse_delta_x', 0.0)
                     mouse_delta_y = action.get('mouse_delta_y', 0.0)
-                    dmg_dealt = reward_components.get('dmg_dealt', 0.0)
-                    dmg_taken = reward_components.get('dmg_taken', 0.0)
-                    spacing = reward_components.get('spacing', 0.0)
-                    aim_reward = reward_components.get('aim_reward', 0.0)
-                    aim_back = reward_components.get('aim_back_penalty', 0.0)
-                    far = reward_components.get('dist_far_penalty', 0.0)
-                    dur = reward_components.get('rod_durability_penalty', 0.0)
-                    l3 = f"C{idx} COMB: Move: {move_str:<12} | Combat: {combat_word:<8} | Mouse: ({mouse_delta_x:>+5.1f}, {mouse_delta_y:>+5.1f}) | LookOff: (Yaw: {opp_yaw_offset:>+6.1f}, Pitch: {opp_pitch_offset:>+6.1f}) | Reward: {reward:>+6.3f} (Dmg: {dmg_dealt:>+4.1f}/{dmg_taken:>+4.1f} | Space: {spacing:>+4.2f} | Aim: {aim_reward:>+4.2f} | Back: {aim_back:>+4.2f} | Far: {far:>+4.2f} | Dur: {dur:>+4.2f})"
+                    dmg_dealt  = reward_components.get('dmg_dealt',  0.0)
+                    dmg_taken  = reward_components.get('dmg_taken',  0.0)
+                    aim        = reward_components.get('aim',        0.0)
+                    dist       = reward_components.get('distance',   0.0)
+                    kill       = reward_components.get('kill',       0.0)
+                    death      = reward_components.get('death',      0.0)
+                    l3 = f"C{idx} COMB: Move: {move_str:<12} | Combat: {combat_word:<8} | Mouse: ({mouse_delta_x:>+5.1f}, {mouse_delta_y:>+5.1f}) | LookOff: (Yaw: {opp_yaw_offset:>+6.1f}, Pitch: {opp_pitch_offset:>+6.1f}) | Reward: {reward:>+6.3f} (Aim: {aim:>+5.3f} | Dist: {dist:>+5.3f} | Dmg: {dmg_dealt:>+4.1f}/{dmg_taken:>+4.1f} | Kill: {kill:>+4.1f} | Death: {death:>+4.1f})"
                     
                     front_dist = state.get("front_wall_dist", 50.0)
                     right_dist = state.get("right_wall_dist", 50.0)
@@ -138,12 +140,6 @@ class TqdmCallback(BaseCallback):
                     l4 = f"C{idx} MAP:  Front: {front_dist:>5.1f}m | Back: {back_dist:>5.1f}m | Left: {left_dist:>5.1f}m | Right: {right_dist:>5.1f}m | GroundDist: {y_ground:>5.2f}m"
                     
                     lines.extend([l1, l2, l3, l4])
-                
-                # Global stats performance line (Padded)
-                rate_val = self.pbar.format_dict['rate']
-                rate_str = f"{rate_val:.1f} it/s" if rate_val is not None else "N/A"
-                stats_line = f"STATS:    Step Counter: {self.step_counter:>6} | Rate: {rate_str:<10}"
-                lines.append(stats_line)
                 
                 # Print output lines below progress bar and restore cursor position dynamically
                 output_str = "".join([f"\n\033[K{line}" for line in lines])

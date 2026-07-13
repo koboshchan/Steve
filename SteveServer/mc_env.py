@@ -97,82 +97,72 @@ class MinecraftPvPEnv(gym.Env):
 
     def _calculate_reward(self, prev_state, current_state, action_dict):
         """
-        Calculates rewards based on the transition between prev_state and current_state.
-        Optimized for 1.8.9 PvP: spacing, hitting, avoiding damage, sprint resetting.
+        Dense reward function for 1.8.9 PvP.
+
+        Every tick the agent receives:
+          - Aim reward   : continuous signal for keeping crosshair on target
+          - Distance reward : Gaussian peaked at optimal reach (~3 blocks)
+
+        On damage events:
+          - Damage dealt / taken : strong +/- signal
+
+        On terminal events:
+          - Kill bonus / Death penalty
         """
         if prev_state is None:
             return 0.0
 
         components = {
+            "aim":      0.0,
+            "distance": 0.0,
             "dmg_dealt": 0.0,
-            "wtap_bonus": 0.0,
             "dmg_taken": 0.0,
-            "spacing": 0.0,
-            "miss_penalty": 0.0,
-            "aim_reward": 0.0,
-            "aim_back_penalty": 0.0,
-            "dist_far_penalty": 0.0,
-            "rod_durability_penalty": 0.0,
-            "survival": 0.0
+            "kill":     0.0,
+            "death":    0.0,
         }
 
-        # Extract values
-        hp = current_state.get("hp", 1.0)
-        prev_hp = prev_state.get("hp", 1.0)
-        opp_hp = current_state.get("opp_hp", 1.0)
-        prev_opp_hp = prev_state.get("opp_hp", 1.0)
+        hp      = current_state.get("hp",      1.0)
+        prev_hp = prev_state.get("hp",         1.0)
+        opp_hp      = current_state.get("opp_hp",  1.0)
+        prev_opp_hp = prev_state.get("opp_hp",     1.0)
         target_dist = current_state.get("target_dist", 999.0)
-        
-        # 1. Dealing damage (large positive reward)
-        if opp_hp < prev_opp_hp:
-            damage_dealt_ratio = prev_opp_hp - opp_hp
-            components["dmg_dealt"] = damage_dealt_ratio * 20.0 * 1.0 # 1.0 reward for full heart dealt (2 HP)
-            
-            # Bonus for sprint-hitting (W-tapping)
-            is_sprinting = current_state.get("is_sprinting", False)
-            if is_sprinting:
-                components["wtap_bonus"] = 0.1
 
-        # 2. Taking damage (large negative reward)
-        if hp < prev_hp:
-            damage_taken_ratio = prev_hp - hp
-            components["dmg_taken"] = -damage_taken_ratio * 20.0 * 0.8
-
-        # 3. Spacing reward (Maintaining 2.8 - 3.0 block reach)
-        if 2.7 <= target_dist <= 3.1:
-            components["spacing"] = 0.05
-        elif target_dist < 2.7:
-            # Too close, vulnerable to trade hits
-            components["spacing"] = -0.01
-
-        # 4. Missed swing penalty
-        swing_cooldown = current_state.get("swing_cooldown", 0.0)
-        prev_swing_cooldown = prev_state.get("swing_cooldown", 0.0)
-        # If swing has just started and opponent is too far, penalize blind spamming
-        if swing_cooldown > 0.8 and prev_swing_cooldown <= 0.1:
-            if target_dist > 4.5:
-                components["miss_penalty"] = -0.02
-
-        # 5. Aiming Reward (Encourage keeping target near crosshair within 15-degree cone)
-        yaw_delta = current_state.get("yaw_delta", 0.0)
+        # 1. Aim reward — dense every tick
+        # Reward peaks when crosshair is dead-on; falls to 0 at 45 degrees.
+        yaw_delta   = current_state.get("yaw_delta",   0.0)
         pitch_delta = current_state.get("pitch_delta", 0.0)
-        aim_error = np.sqrt(yaw_delta**2 + pitch_delta**2)
-        if aim_error < 15.0:
-            components["aim_reward"] = 0.01 * (1.0 - (aim_error / 15.0))
+        aim_error = np.sqrt(yaw_delta ** 2 + pitch_delta ** 2)
+        AIM_MAX_DEG = 45.0
+        if aim_error < AIM_MAX_DEG and target_dist < 20.0:
+            components["aim"] = 0.04 * (1.0 - aim_error / AIM_MAX_DEG)
 
-        # 6. Facing Backward Punishment (More than 180 degrees off or close to it)
-        if aim_error > 180.0 or abs(yaw_delta) >= 175.0:
-            components["aim_back_penalty"] = -0.05
+        # 2. Distance shaping — dense every tick
+        # Gaussian peaked at OPTIMAL_DIST blocks; zero beyond DIST_CUTOFF.
+        OPTIMAL_DIST = 3.0
+        DIST_SIGMA   = 1.5
+        DIST_CUTOFF  = 20.0
+        if target_dist < DIST_CUTOFF:
+            components["distance"] = 0.03 * np.exp(
+                -0.5 * ((target_dist - OPTIMAL_DIST) / DIST_SIGMA) ** 2
+            )
 
-        # 7. Distance >30 blocks Penalty
-        if target_dist > 30.0:
-            components["dist_far_penalty"] = -0.02
+        # 3. Damage dealt
+        if opp_hp < prev_opp_hp:
+            dmg = prev_opp_hp - opp_hp          # fraction of HP bar lost
+            components["dmg_dealt"] = dmg * 10.0  # ~+1.0 per half-heart
 
-        # 8. Low durability rod use penalty
-        combat_action = action_dict.get("combat_action", 0)
-        rod_durability = current_state.get("rod_durability", 1.0)
-        if combat_action == 3 and rod_durability < 0.25:
-            components["rod_durability_penalty"] = -0.05
+            # Kill bonus
+            if opp_hp <= 0.0:
+                components["kill"] = 5.0
+
+        # 4. Damage taken
+        if hp < prev_hp:
+            dmg = prev_hp - hp
+            components["dmg_taken"] = -dmg * 8.0   # ~-0.8 per half-heart
+
+            # Death penalty
+            if hp <= 0.0:
+                components["death"] = -5.0
 
         reward = sum(components.values())
         self.last_reward_components = components

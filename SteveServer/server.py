@@ -2,6 +2,7 @@ import os
 os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
 import asyncio
 import json
+import sys
 import torch
 import numpy as np
 import gymnasium as gym
@@ -41,11 +42,13 @@ class WebSocketCoordinator:
     def __init__(self):
         self.websocket = None
         self.latest_state = None
+        self.prev_state = None
         self.state_received = asyncio.Event()
 
     async def handle_client(self, websocket):
         self.websocket = websocket
         self.state_received.clear()
+        self.prev_state = None
         print("Minecraft Client Successfully Connected!")
         
         try:
@@ -95,6 +98,69 @@ class WebSocketCoordinator:
                     "mouse_delta_y": mouse_delta_y
                 }
                 
+                # Calculate reward metrics
+                reward = 0.0
+                reward_components = {}
+                if self.prev_state is not None:
+                    reward = dummy_env._calculate_reward(self.prev_state, state, response)
+                    reward_components = dummy_env.last_reward_components
+                self.prev_state = state
+
+                # Print telemetry info (dynamically updating in terminal)
+                # Format active item
+                active_item_map = {0: "Sword", 1: "Fishing Rod"}
+                active_word = active_item_map.get(state.get("active_item", 0), "Sword")
+
+                # Format moving inputs
+                move_map = {0: "Idle", 1: "W (Forward)", 2: "S (Backward)"}
+                strafe_map = {0: "Idle", 1: "A (Left)", 2: "D (Right)"}
+                combat_action_map = {0: "Idle", 1: "Attack", 2: "Block", 3: "Cast Rod", 4: "Reel Rod"}
+
+                move_str = move_map.get(forward_back, "Idle")
+                strafe_str = strafe_map.get(strafe, "Idle")
+                combat_word = combat_action_map.get(combat_action, "Idle")
+
+                # Line 1: Self Stats (Padded)
+                hp_val = state.get('hp', 1.0) * 10.0
+                vel_x = state.get('vel_x', 0.0)
+                vel_y = state.get('vel_y', 0.0)
+                vel_z = state.get('vel_z', 0.0)
+                sprint_str = str(state.get('is_sprinting', False))
+                y_ground = float(state.get('y_ground', 0.0))
+                l1 = f"SELF: HP: {hp_val:>4.1f}/10.0 | Vel: ({vel_x:>+6.2f}, {vel_y:>+6.2f}, {vel_z:>+6.2f}) | Sprint: {sprint_str:<5} | GroundDist: {y_ground:>5.2f}m"
+
+                # Line 2: Opponent Stats (Padded)
+                opp_hp_val = state.get('opp_hp', 1.0) * 10.0
+                target_dist = state.get('target_dist', 999.0)
+                opp_rel_x = state.get('opp_rel_x', 0.0)
+                opp_rel_y = state.get('opp_rel_y', 0.0)
+                opp_rel_z = state.get('opp_rel_z', 0.0)
+                l2 = f"OPP:  HP: {opp_hp_val:>4.1f}/10.0 | Dist: {target_dist:>6.2f}m | RelPos: ({opp_rel_x:>+6.1f}, {opp_rel_y:>+6.1f}, {opp_rel_z:>+6.1f})"
+
+                # Line 3: Actions & Reward breakdown (Padded)
+                opp_yaw_offset = state.get('opp_yaw_offset', 0.0)
+                opp_pitch_offset = state.get('opp_pitch_offset', 0.0)
+                dmg_dealt  = reward_components.get('dmg_dealt',  0.0)
+                dmg_taken  = reward_components.get('dmg_taken',  0.0)
+                aim        = reward_components.get('aim',        0.0)
+                dist       = reward_components.get('distance',   0.0)
+                kill       = reward_components.get('kill',       0.0)
+                death      = reward_components.get('death',      0.0)
+                l3 = f"COMB: Move: {move_str:<12} | Combat: {combat_word:<8} | Mouse: ({mouse_delta_x:>+5.1f}, {mouse_delta_y:>+5.1f}) | LookOff: (Yaw: {opp_yaw_offset:>+6.1f}, Pitch: {opp_pitch_offset:>+6.1f}) | Reward: {reward:>+6.3f} (Aim: {aim:>+5.3f} | Dist: {dist:>+5.3f} | Dmg: {dmg_dealt:>+4.1f}/{dmg_taken:>+4.1f} | Kill: {kill:>+4.1f} | Death: {death:>+4.1f})"
+
+                # Line 4: Map info
+                front_dist = state.get("front_wall_dist", 50.0)
+                right_dist = state.get("right_wall_dist", 50.0)
+                back_dist = state.get("back_wall_dist", 50.0)
+                left_dist = state.get("left_wall_dist", 50.0)
+                l4 = f"MAP:  Front: {front_dist:>5.1f}m | Back: {back_dist:>5.1f}m | Left: {left_dist:>5.1f}m | Right: {right_dist:>5.1f}m | GroundDist: {y_ground:>5.2f}m"
+
+                lines = [l1, l2, l3, l4]
+                output_str = "".join([f"\n\033[K{line}" for line in lines])
+                num_lines = len(lines)
+                sys.stdout.write(f"{output_str}\033[{num_lines}A\r")
+                sys.stdout.flush()
+
                 # 5. Send actions back to Forge Client
                 await websocket.send(json.dumps(response))
                 
@@ -102,6 +168,7 @@ class WebSocketCoordinator:
             print(f"Connection Dropped or Error: {e}")
         finally:
             self.websocket = None
+            self.prev_state = None
 
 coordinator = WebSocketCoordinator()
 
