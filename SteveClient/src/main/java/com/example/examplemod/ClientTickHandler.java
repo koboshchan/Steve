@@ -11,7 +11,7 @@ import net.minecraft.item.ItemStack;
 import net.minecraft.item.ItemSword;
 import net.minecraft.util.MathHelper;
 import net.minecraft.util.MovingObjectPosition;
-import net.minecraftforge.client.event.ClientChatReceivedEvent;
+import net.minecraft.util.Vec3;
 import net.minecraftforge.client.event.GuiOpenEvent;
 import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
 import net.minecraftforge.fml.common.gameevent.TickEvent;
@@ -23,7 +23,6 @@ public class ClientTickHandler {
     private SteveWebSocketClient ws = null;
     private int reconnectTimer = 0;
     private int rightClickDelay = 0;
-    private boolean inMatch = false;
 
     public ClientTickHandler() {
         connectToServer();
@@ -46,7 +45,8 @@ public class ClientTickHandler {
             return;
         }
 
-        // Auto-use lime dye if present in hotbar
+        try {
+        // Auto-use lime dye if present in hotbar (requeues the player for the next match)
         int limeDyeSlot = findLimeDyeSlot();
         if (limeDyeSlot != -1) {
             if (rightClickDelay <= 0) {
@@ -70,19 +70,8 @@ public class ClientTickHandler {
             return;
         }
 
-        // Determine if we are on PvP Land
-        boolean isPvPLand = false;
-        if (!mc.isSingleplayer() && mc.getCurrentServerData() != null) {
-            String ip = mc.getCurrentServerData().serverIP.toLowerCase();
-            if (ip.contains("pvp.land")) {
-                isPvPLand = true;
-            }
-        }
-
-        // If we are not on PvP Land, force inMatch = true to start training immediately
-        if (!isPvPLand) {
-            inMatch = true;
-        }
+        // In-game detection: arrows in inventory = in game, no arrows = lobby
+        boolean inMatch = hasArrows();
 
         // 1. GATHER STATE VARIABLES
         JsonObject state = new JsonObject();
@@ -107,7 +96,6 @@ public class ClientTickHandler {
         // Hotbar detection states
         state.addProperty("sword_slot", findSwordSlot());
         state.addProperty("rod_slot", findRodSlot());
-        state.addProperty("lime_dye_slot", limeDyeSlot);
         state.addProperty("in_match", inMatch);
 
         // Get fishing rod durability ratio
@@ -120,6 +108,12 @@ public class ClientTickHandler {
             }
         }
         state.addProperty("rod_durability", rodDurability);
+
+        // Map wall distances (front, back, left, right)
+        state.addProperty("front_wall_dist", getDistanceToWall(mc.thePlayer.rotationYaw));
+        state.addProperty("right_wall_dist", getDistanceToWall(mc.thePlayer.rotationYaw + 90.0));
+        state.addProperty("back_wall_dist", getDistanceToWall(mc.thePlayer.rotationYaw + 180.0));
+        state.addProperty("left_wall_dist", getDistanceToWall(mc.thePlayer.rotationYaw - 90.0));
 
         // Find closest opponent player
         double closestDist = 999.0;
@@ -199,6 +193,7 @@ public class ClientTickHandler {
         // 3. RETRIEVE AND ENFORCE RECEIVED DECISIONS
         if (ws.latestServerAction != null) {
             JsonObject actions = ws.latestServerAction;
+            ws.latestServerAction = null; // Consume action so we don't spam it during epoch updates
             try {
                 // Movement Overrides
                 int move = actions.get("forward_back").getAsInt();
@@ -265,6 +260,19 @@ public class ClientTickHandler {
             } catch (Exception e) {
                 e.printStackTrace();
             }
+        } else {
+            // Stop everything if no action was received from server (e.g. training epoch is updating)
+            KeyBinding.setKeyBindState(mc.gameSettings.keyBindForward.getKeyCode(), false);
+            KeyBinding.setKeyBindState(mc.gameSettings.keyBindBack.getKeyCode(), false);
+            KeyBinding.setKeyBindState(mc.gameSettings.keyBindLeft.getKeyCode(), false);
+            KeyBinding.setKeyBindState(mc.gameSettings.keyBindRight.getKeyCode(), false);
+            KeyBinding.setKeyBindState(mc.gameSettings.keyBindJump.getKeyCode(), false);
+            KeyBinding.setKeyBindState(mc.gameSettings.keyBindSneak.getKeyCode(), false);
+            KeyBinding.setKeyBindState(mc.gameSettings.keyBindUseItem.getKeyCode(), false);
+        }
+        } catch (Exception e) {
+            System.out.println("[SteveMod] Exception in client tick: " + e.getMessage());
+            e.printStackTrace();
         }
     }
 
@@ -272,6 +280,16 @@ public class ClientTickHandler {
         for (int i = 0; i < 9; i++) {
             ItemStack stack = mc.thePlayer.inventory.mainInventory[i];
             if (stack != null && itemClass.isInstance(stack.getItem())) {
+                return i;
+            }
+        }
+        return -1;
+    }
+
+    private int findLimeDyeSlot() {
+        for (int i = 0; i < 9; i++) {
+            ItemStack stack = mc.thePlayer.inventory.mainInventory[i];
+            if (stack != null && stack.getItem() == Items.dye && stack.getItemDamage() == 10) {
                 return i;
             }
         }
@@ -298,30 +316,39 @@ public class ClientTickHandler {
         return -1;
     }
 
-    private int findLimeDyeSlot() {
-        for (int i = 0; i < 9; i++) {
-            ItemStack stack = mc.thePlayer.inventory.mainInventory[i];
-            if (stack != null && stack.getItem() == Items.dye && stack.getItemDamage() == 10) {
-                return i;
-            }
-        }
-        return -1;
-    }
-
-    @SubscribeEvent
-    public void onChatReceived(ClientChatReceivedEvent event) {
-        String message = event.message.getUnformattedText();
-        if (message.contains("The match has started!")) {
-            inMatch = true;
-        } else if (message.contains("MATCH RESULTS") || message.contains("Winner:") || message.contains("Loser:")) {
-            inMatch = false;
-        }
-    }
-
     @SubscribeEvent
     public void onGuiOpen(GuiOpenEvent event) {
         if (event.gui instanceof GuiMainMenu && !(event.gui instanceof SteveMainMenu)) {
             event.gui = new SteveMainMenu();
         }
+    }
+
+    private double getDistanceToWall(double yaw) {
+        try {
+            double rad = Math.toRadians(yaw);
+            double dx = -Math.sin(rad);
+            double dz = Math.cos(rad);
+            
+            Vec3 start = new Vec3(mc.thePlayer.posX, mc.thePlayer.posY + mc.thePlayer.getEyeHeight(), mc.thePlayer.posZ);
+            Vec3 end = new Vec3(mc.thePlayer.posX + dx * 50.0, mc.thePlayer.posY + mc.thePlayer.getEyeHeight(), mc.thePlayer.posZ + dz * 50.0);
+            
+            MovingObjectPosition mop = mc.theWorld.rayTraceBlocks(start, end, false, true, false);
+            if (mop != null && mop.typeOfHit == MovingObjectPosition.MovingObjectType.BLOCK) {
+                return start.distanceTo(mop.hitVec);
+            }
+        } catch (Exception e) {
+            // Safe fallback
+        }
+        return 50.0;
+    }
+
+    private boolean hasArrows() {
+        if (mc.thePlayer == null || mc.thePlayer.inventory == null) return false;
+        for (ItemStack stack : mc.thePlayer.inventory.mainInventory) {
+            if (stack != null && stack.getItem() == Items.arrow) {
+                return true;
+            }
+        }
+        return false;
     }
 }

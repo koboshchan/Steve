@@ -23,7 +23,7 @@ class MinecraftPvPEnv(gym.Env):
         # 4: Mouse Delta Y -> 9 bins (0..8) -> (mouse_y_idx - 4) * 2.5 degrees
         self.action_space = spaces.MultiDiscrete([9, 3, 5, 11, 9])
 
-        # Observation Space (20 features):
+        # Observation Space (24 features):
         # 1. Self HP (0.0 to 1.0)
         # 2-4. Self Velocity X, Y, Z
         # 5. Squashed Height: min(y_ground / 4.0, 1.0)
@@ -35,8 +35,9 @@ class MinecraftPvPEnv(gym.Env):
         # 16-17. Normalized Self look angles: yaw_delta / 180.0, pitch_delta / 90.0
         # 18-19. Normalized Opponent look angles: opp_yaw_offset / 180.0, opp_pitch_offset / 90.0
         # 20. Swing Cooldown (0.0 to 1.0)
+        # 21-24. Wall distances (front, right, back, left) normalized: min(dist / 50.0, 1.0)
         self.observation_space = spaces.Box(
-            low=-np.inf, high=np.inf, shape=(20,), dtype=np.float32
+            low=-np.inf, high=np.inf, shape=(24,), dtype=np.float32
         )
 
         # Communication queues for async WebSocket interaction
@@ -50,8 +51,8 @@ class MinecraftPvPEnv(gym.Env):
         }
 
     def _parse_observation(self, state):
-        """Converts state dictionary from Java Mod into flattened float32 numpy array of shape (20,)."""
-        obs = np.zeros(20, dtype=np.float32)
+        """Converts state dictionary from Java Mod into flattened float32 numpy array of shape (24,)."""
+        obs = np.zeros(24, dtype=np.float32)
         
         # Self stats
         obs[0] = float(state.get("hp", 1.0))
@@ -85,6 +86,12 @@ class MinecraftPvPEnv(gym.Env):
         
         # Swing cooldown
         obs[19] = float(state.get("swing_cooldown", 0.0))
+        
+        # Wall distances (front, right, back, left)
+        obs[20] = min(float(state.get("front_wall_dist", 50.0)) / 50.0, 1.0)
+        obs[21] = min(float(state.get("right_wall_dist", 50.0)) / 50.0, 1.0)
+        obs[22] = min(float(state.get("back_wall_dist", 50.0)) / 50.0, 1.0)
+        obs[23] = min(float(state.get("left_wall_dist", 50.0)) / 50.0, 1.0)
         
         return obs
 
@@ -178,6 +185,22 @@ class MinecraftPvPEnv(gym.Env):
         # 2: Combat Action (0..4)
         # 3: Mouse Delta X (0..10)
         # 4: Mouse Delta Y (0..8)
+        
+        # --- Lobby pass-through ---
+        # If the previous state shows we are not in a match yet, send an idle
+        # action and wait for the next tick without doing any RL logic.
+        # This keeps the client ticking without blocking the parallel training
+        # thread for the other environments.
+        if self.ws_queue is not None and not self.current_state.get("in_match", True):
+            idle_action = {
+                "forward_back": 0, "strafe": 0, "modifier": 0, "combat_action": 0,
+                "mouse_delta_x": 0.0, "mouse_delta_y": 0.0
+            }
+            new_state = self.ws_queue.step_exchange(idle_action)
+            self.current_state = new_state
+            obs = self._parse_observation(self.current_state)
+            return obs, 0.0, False, False, {"in_lobby": True}
+        
         move_idx = int(action[0])
         modifier = int(action[1])
         combat_action = int(action[2])
@@ -244,8 +267,10 @@ class MinecraftPvPEnv(gym.Env):
         self.last_action_dict = response
         self.last_reward = reward
         
-        # Check termination (e.g. if player dies or the match ends)
-        terminated = bool(self.current_state.get("hp", 1.0) <= 0.0 or not self.current_state.get("in_match", True))
+        # Check termination (player died)
+        # Note: in_match=False is NOT a termination here — the lobby pass-through
+        # at the top of the next step() call will handle it without resetting.
+        terminated = bool(self.current_state.get("hp", 1.0) <= 0.0)
         truncated = False
         
         if terminated and self.ws_queue is not None:
@@ -264,19 +289,11 @@ class MinecraftPvPEnv(gym.Env):
         super().reset(seed=seed)
         
         if self.ws_queue is not None:
-            # Wait for client to connect and send initial state
+            # Grab the next state from the client and return immediately.
+            # If the client is still in the lobby (in_match=False), the lobby
+            # pass-through at the top of step() will handle it tick-by-tick
+            # without blocking other parallel environments.
             state = self.ws_queue.reset_exchange(self.env_idx)
-            # If we are in the lobby (lime dye is present), wait for the click and match start
-            idle_action = {
-                "forward_back": 0,
-                "strafe": 0,
-                "modifier": 0,
-                "combat_action": 0,
-                "mouse_delta_x": 0.0,
-                "mouse_delta_y": 0.0
-            }
-            while not state.get("in_match", False):
-                state = self.ws_queue.step_exchange(idle_action)
             self.current_state = state
         else:
             self.current_state = {

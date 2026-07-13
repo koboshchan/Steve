@@ -1,8 +1,11 @@
 import os
 os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
 
+import argparse
 import asyncio
+import concurrent.futures
 import json
+import numpy as np
 import torch
 import queue
 import threading
@@ -12,6 +15,7 @@ from websockets.server import serve
 from stable_baselines3 import PPO
 from stable_baselines3.common.callbacks import BaseCallback
 from stable_baselines3.common.vec_env import DummyVecEnv
+from copy import deepcopy
 from tqdm import tqdm
 from mc_env import MinecraftPvPEnv
 
@@ -32,6 +36,8 @@ class ThreadBridge:
         self.state_queue = queue.Queue(maxsize=1)
         self.action_queue = queue.Queue(maxsize=1)
         self.client_connected = threading.Event()
+        # Signals that this client has reported in_match=True at least once
+        self.in_match_event = threading.Event()
 
     def step_exchange(self, action_dict):
         # Called by MinecraftPvPEnv.step() inside the training thread
@@ -62,11 +68,11 @@ class TqdmCallback(BaseCallback):
         self.pbar = tqdm(total=self.total_timesteps, desc="Training PPO Agent", file=sys.stdout, dynamic_ncols=True)
 
     def _on_step(self) -> bool:
-        self.pbar.update(1)
+        self.pbar.update(self.training_env.num_envs)
         self.step_counter += 1
         
-        # Update metrics every 5 ticks
-        if self.step_counter % 5 == 0:
+        # Update metrics every tick (50 ms)
+        if True:
             try:
                 # Accumulate telemetry lines for each environment
                 lines = []
@@ -125,7 +131,13 @@ class TqdmCallback(BaseCallback):
                     dur = reward_components.get('rod_durability_penalty', 0.0)
                     l3 = f"C{idx} COMB: Move: {move_str:<12} | Combat: {combat_word:<8} | Mouse: ({mouse_delta_x:>+5.1f}, {mouse_delta_y:>+5.1f}) | LookOff: (Yaw: {opp_yaw_offset:>+6.1f}, Pitch: {opp_pitch_offset:>+6.1f}) | Reward: {reward:>+6.3f} (Dmg: {dmg_dealt:>+4.1f}/{dmg_taken:>+4.1f} | Space: {spacing:>+4.2f} | Aim: {aim_reward:>+4.2f} | Back: {aim_back:>+4.2f} | Far: {far:>+4.2f} | Dur: {dur:>+4.2f})"
                     
-                    lines.extend([l1, l2, l3])
+                    front_dist = state.get("front_wall_dist", 50.0)
+                    right_dist = state.get("right_wall_dist", 50.0)
+                    back_dist = state.get("back_wall_dist", 50.0)
+                    left_dist = state.get("left_wall_dist", 50.0)
+                    l4 = f"C{idx} MAP:  Front: {front_dist:>5.1f}m | Back: {back_dist:>5.1f}m | Left: {left_dist:>5.1f}m | Right: {right_dist:>5.1f}m | GroundDist: {y_ground:>5.2f}m"
+                    
+                    lines.extend([l1, l2, l3, l4])
                 
                 # Global stats performance line (Padded)
                 rate_val = self.pbar.format_dict['rate']
@@ -145,30 +157,119 @@ class TqdmCallback(BaseCallback):
     def _on_training_end(self):
         if self.pbar:
             self.pbar.close()
-        print("\n" * (num_envs * 3 + 2))
+        print("\n" * (num_envs * 4 + 2))
 
 # 1. Hardware Detection
 device = torch.device("cuda" if torch.cuda.is_available() else ("mps" if torch.backends.mps.is_available() else "cpu"))
 print(f"Using Hardware Interface: {device}")
+
+# Parallel vectorized environment: each sub-env steps in its own thread so
+# a client that is in the lobby (blocking reset) never stalls the other clients.
+class ThreadedVecEnv(DummyVecEnv):
+    """
+    Drop-in replacement for DummyVecEnv that steps every sub-environment in a
+    dedicated thread.  All of DummyVecEnv's buffer / observation machinery is
+    reused; only step_wait() and reset() are overridden to run concurrently.
+
+    Result: with N clients both in-game the throughput is N×20 it/s instead of
+    the 20 it/s cap that DummyVecEnv's sequential stepping imposes.
+    """
+    def __init__(self, env_fns):
+        super().__init__(env_fns)
+        self._executor = concurrent.futures.ThreadPoolExecutor(max_workers=len(env_fns))
+
+    # step_async just stores the actions (same as DummyVecEnv)
+    def step_async(self, actions):
+        self.actions = actions
+
+    def step_wait(self):
+        """Run each env's step (+ auto-reset on done) in parallel threads."""
+        def _step_one(env_idx):
+            obs, rew, terminated, truncated, info = self.envs[env_idx].step(self.actions[env_idx])
+            done = terminated or truncated
+            if truncated and not terminated:
+                info["TimeLimit.truncated"] = True
+            if done:
+                # Store terminal obs so SB3 can bootstrap the value estimate
+                info["terminal_observation"] = obs
+                # reset() is now non-blocking, so this never freezes other threads
+                reset_obs, reset_info = self.envs[env_idx].reset()
+                obs = reset_obs
+                try:
+                    self.reset_infos[env_idx] = reset_info
+                except AttributeError:
+                    pass  # older SB3 versions don't have reset_infos
+            return env_idx, obs, rew, done, info
+
+        futures = [self._executor.submit(_step_one, i) for i in range(self.num_envs)]
+        for f in concurrent.futures.as_completed(futures):
+            env_idx, obs, rew, done, info = f.result()
+            self.buf_rews[env_idx] = rew
+            self.buf_dones[env_idx] = done
+            self.buf_infos[env_idx] = info
+            self._save_obs(env_idx, obs)
+
+        return (
+            self._obs_from_buf(),
+            np.copy(self.buf_rews),
+            np.copy(self.buf_dones),
+            deepcopy(self.buf_infos),
+        )
+
+    def reset(self):
+        """Reset all envs in parallel threads."""
+        def _reset_one(env_idx):
+            obs, info = self.envs[env_idx].reset()
+            return env_idx, obs, info
+
+        futures = [self._executor.submit(_reset_one, i) for i in range(self.num_envs)]
+        for f in concurrent.futures.as_completed(futures):
+            env_idx, obs, info = f.result()
+            self._save_obs(env_idx, obs)
+            try:
+                self.reset_infos[env_idx] = info
+            except AttributeError:
+                pass
+
+        return self._obs_from_buf()
+
+    def close(self):
+        self._executor.shutdown(wait=False)
+        super().close()
 
 # 2. WebSocket Event Loop Handler
 async def tick_handler(websocket):
     global connected_sockets, num_envs, training_started, bridges
     
     with connection_lock:
-        if training_started:
-            print("Connection refused: Training loop has already initialized.")
-            return
-        connected_sockets.append(websocket)
-        env_idx = len(connected_sockets) - 1
-        
-    print(f"Minecraft Client {env_idx} connected! (Waiting for training initialization...)")
+        if not training_started:
+            connected_sockets.append(websocket)
+            print("Minecraft Client connected! (Waiting for training initialization...)")
+        else:
+            env_idx = None
+            for idx in range(num_envs):
+                if not bridges[idx].client_connected.is_set():
+                    env_idx = idx
+                    break
+            if env_idx is None:
+                print("Connection refused: All training slots are currently active.")
+                return
+            print(f"Minecraft Client {env_idx} reconnected to Training Server!")
     
     try:
-        # Await countdown phase completion
-        while not training_started:
-            await asyncio.sleep(0.1)
+        if not training_started:
+            # Await countdown phase completion
+            while not training_started:
+                await asyncio.sleep(0.1)
             
+            with connection_lock:
+                if websocket in connected_sockets:
+                    env_idx = connected_sockets.index(websocket)
+                else:
+                    print("Connection lost before training started.")
+                    return
+        
+        # env_idx is now guaranteed to be a valid and correct index inside bridges list
         bridge = bridges[env_idx]
         bridge.client_connected.set()
         
@@ -176,14 +277,20 @@ async def tick_handler(websocket):
             # A. Receive state packet from Forge client
             state = json.loads(message)
             
-            # B. Forward state to corresponding Gym environment bridge queue
+            # B. Update this bridge's in_match event independently of the training thread
+            if state.get("in_match", False):
+                bridge.in_match_event.set()
+            else:
+                bridge.in_match_event.clear()
+            
+            # C. Forward state to corresponding Gym environment bridge queue
             bridge.state_queue.put(state)
             
-            # C. Wait for corresponding environment to step and push the action
+            # D. Wait for corresponding environment to step and push the action
             loop = asyncio.get_running_loop()
             action = await loop.run_in_executor(None, bridge.action_queue.get)
             
-            # D. Send response actions back to client
+            # E. Send response actions back to client
             await websocket.send(json.dumps(action))
             
     except Exception as e:
@@ -223,7 +330,7 @@ def run_websocket_server():
     loop.run_until_complete(start_server())
 
 # 3. Training Worker
-def training_worker():
+def training_worker(total_steps):
     global num_envs, bridges, training_started
     
     print("Awaiting connection from Minecraft on ws://localhost:8765...")
@@ -245,11 +352,42 @@ def training_worker():
         
     print(f"Initializing PPO agent with {num_envs} environment(s) in parallel...")
     
+    # Wait for ALL clients to independently report in_match=True before creating envs.
+    # This runs concurrently so each client's lobby wait does not block the others.
+    # Without this, DummyVecEnv would reset envs sequentially, causing env 0's
+    # in-match wait to block env 1, env 2, etc. from starting their own check.
+    print("Waiting for all clients to enter a match (concurrent per-client check)...")
+    idle_action = {
+        "forward_back": 0, "strafe": 0, "modifier": 0,
+        "combat_action": 0, "mouse_delta_x": 0.0, "mouse_delta_y": 0.0
+    }
+
+    def wait_for_in_match(bridge_idx):
+        """Spin-loop for one bridge: drain ticks until in_match=True, then stop.
+        Each call runs in its own thread so all bridges wait in parallel."""
+        bridge = bridges[bridge_idx]
+        while True:
+            state = bridge.state_queue.get()      # blocks until client sends a tick
+            if state is None:
+                raise ConnectionDroppedException(f"Client {bridge_idx} disconnected before match start")
+            if state.get("in_match", False):
+                # Put the in-match state back so reset_exchange() can consume it
+                bridge.state_queue.put(state)
+                tqdm.write(f"Client {bridge_idx} is in a match — ready for training.")
+                return
+            # Not yet in game: ack the tick with an idle action so the client keeps ticking
+            bridge.action_queue.put(idle_action)
+
+    with concurrent.futures.ThreadPoolExecutor(max_workers=num_envs) as pool:
+        futures = {pool.submit(wait_for_in_match, i): i for i in range(num_envs)}
+        for future in concurrent.futures.as_completed(futures):
+            future.result()   # re-raise any ConnectionDroppedException
+
     # Recreate vectorized environments matching exact client slot indexes
     def make_env(env_idx):
         return lambda: MinecraftPvPEnv(websocket_server_queue=bridges[env_idx], env_idx=env_idx)
         
-    envs = DummyVecEnv([make_env(i) for i in range(num_envs)])
+    envs = ThreadedVecEnv([make_env(i) for i in range(num_envs)])
     
     model = PPO(
         policy="MlpPolicy",
@@ -265,9 +403,9 @@ def training_worker():
         device=device
     )
     
-    print(f"Starting actual RL learning loop (total_timesteps=100000) for {num_envs} environments...")
+    print(f"Starting actual RL learning loop (total_timesteps={total_steps}) for {num_envs} environments...")
     try:
-        model.learn(total_timesteps=100000, callback=TqdmCallback(100000), reset_num_timesteps=False)
+        model.learn(total_timesteps=total_steps, callback=TqdmCallback(total_steps), reset_num_timesteps=False)
         model.save("ppo_minecraft_pvp")
         print("Training completed! Saved model to 'ppo_minecraft_pvp.zip'")
     except ConnectionDroppedException:
@@ -282,12 +420,21 @@ def training_worker():
         model.save("ppo_minecraft_pvp")
 
 def main():
+    parser = argparse.ArgumentParser(description="Train the Steve Minecraft PvP PPO agent.")
+    parser.add_argument(
+        "--steps",
+        type=int,
+        default=100_000,
+        help="Total number of environment steps to train for (default: 100000)."
+    )
+    args = parser.parse_args()
+
     # Start the WebSocket server in a background daemon thread
     ws_thread = threading.Thread(target=run_websocket_server, daemon=True)
     ws_thread.start()
-    
+
     # Run the training loop in the main thread so it captures Ctrl+C (KeyboardInterrupt)
-    training_worker()
+    training_worker(total_steps=args.steps)
 
 if __name__ == "__main__":
     main()
