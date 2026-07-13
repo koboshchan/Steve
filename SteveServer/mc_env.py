@@ -211,12 +211,15 @@ class MinecraftPvPEnv(gym.Env):
         # 3: Mouse Delta X (0..10)
         # 4: Mouse Delta Y (0..8)
         
-        # --- Lobby pass-through ---
-        # If the previous state shows we are not in a match yet, send an idle
-        # action and wait for the next tick without doing any RL logic.
-        # This keeps the client ticking without blocking the parallel training
-        # thread for the other environments.
-        if self.ws_queue is not None and not self.current_state.get("in_match", True):
+        # --- Lobby / Missing Opponent pass-through ---
+        # If the previous state shows we are not in a match yet, OR the opponent is missing
+        # from the match, send an idle action and wait for the next tick.
+        # This keeps the client ticking and pauses training for this client without
+        # blocking the parallel thread execution of other environments.
+        not_in_match = not self.current_state.get("in_match", True)
+        opp_missing = self.current_state.get("in_match", True) and not self.current_state.get("opp_found", True)
+        
+        if self.ws_queue is not None and (not_in_match or opp_missing):
             idle_action = {
                 "forward_back": 0, "strafe": 0, "modifier": 0, "combat_action": 0,
                 "mouse_delta_x": 0.0, "mouse_delta_y": 0.0

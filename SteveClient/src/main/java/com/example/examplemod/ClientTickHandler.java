@@ -186,6 +186,8 @@ public class ClientTickHandler {
             state.addProperty("opp_pitch_offset", 0.0);
         }
 
+        state.addProperty("opp_found", closestEnemy != null);
+
         // Swing cooldown/progress
         state.addProperty("swing_cooldown", mc.thePlayer.swingProgress);
 
