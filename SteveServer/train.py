@@ -70,10 +70,19 @@ class TqdmCallback(BaseCallback):
         self.last_backup_checkpoint = 0
 
     def _on_training_start(self):
+        initial_steps = self.model.num_timesteps
+        total_steps_bar = initial_steps + self.total_timesteps
+        
         # Create progress bar using sys.stdout to prevent overlap issues with other stdout prints
-        self.pbar = tqdm(total=self.total_timesteps, desc="Training PPO Agent", file=sys.stdout, dynamic_ncols=True)
+        self.pbar = tqdm(
+            total=total_steps_bar,
+            initial=initial_steps,
+            desc="Training PPO Agent",
+            file=sys.stdout,
+            dynamic_ncols=True
+        )
         # Prevent historical backups on resume by seeding last_backup_checkpoint with current loaded timesteps
-        self.last_backup_checkpoint = self.model.num_timesteps
+        self.last_backup_checkpoint = initial_steps
 
     def _on_step(self) -> bool:
         # Only count steps from envs that are actually in a match.
