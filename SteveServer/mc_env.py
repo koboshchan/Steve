@@ -147,6 +147,7 @@ class MinecraftPvPEnv(gym.Env):
             "distance_far_penalty":    0.0,
             "wall_proximity_penalty":  0.0,
             "wall_corner_penalty":     0.0,
+            "wall_away_reward":        0.0,
             "look_pitch_penalty":      0.0,
             "facing_away_penalty":     0.0,
             "dmg_dealt":               0.0,
@@ -233,6 +234,11 @@ class MinecraftPvPEnv(gym.Env):
                 components["wall_proximity_penalty"] = -0.05 * multiplier
         else:
             self.consecutive_wall_ticks = 0
+
+        # Reward them 0.1 if they are at least 7 blocks away from any wall
+        if (front_wall_dist >= 7.0 and right_wall_dist >= 7.0 and
+                back_wall_dist >= 7.0 and left_wall_dist >= 7.0):
+            components["wall_away_reward"] = 0.1
 
         # 5. Damage dealt
         if opp_hp < prev_opp_hp:
