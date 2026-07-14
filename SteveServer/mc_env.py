@@ -315,7 +315,17 @@ class MinecraftPvPEnv(gym.Env):
                 "forward_back": 0, "strafe": 0, "modifier": 0, "combat_action": 0,
                 "mouse_delta_x": 0.0, "mouse_delta_y": 0.0
             }
-            self.ws_queue.action_queue.put(idle_action)
+            # Clear any stale actions to prevent blocking
+            import queue
+            while not self.ws_queue.action_queue.empty():
+                try:
+                    self.ws_queue.action_queue.get_nowait()
+                except queue.Empty:
+                    break
+            try:
+                self.ws_queue.action_queue.put_nowait(idle_action)
+            except queue.Full:
+                pass
             
         info = {}
         

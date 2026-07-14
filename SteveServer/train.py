@@ -354,7 +354,16 @@ async def tick_handler(websocket):
                 bridge.in_match_event.clear()
             
             # C. Forward state to corresponding Gym environment bridge queue
-            bridge.state_queue.put(state)
+            # Clear any old state to make room for the latest one
+            while not bridge.state_queue.empty():
+                try:
+                    bridge.state_queue.get_nowait()
+                except queue.Empty:
+                    break
+            try:
+                bridge.state_queue.put_nowait(state)
+            except queue.Full:
+                pass
             
             # D. Wait for corresponding environment to step and push the action
             loop = asyncio.get_running_loop()
