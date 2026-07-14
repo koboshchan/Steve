@@ -1,0 +1,29 @@
+plugins {
+    id 'java'
+}
+
+group = 'ga.strikepractice'
+version = '3.5.2'
+
+java {
+    sourceCompatibility = JavaVersion.VERSION_1_8
+    targetCompatibility = JavaVersion.VERSION_1_8
+}
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    compileOnly files('libs/paper.jar', 'libs/citizens.jar', 'libs/strikepractice.jar', 'libs/fawe.jar', 'libs/worldedit.jar')
+}
+
+tasks.withType(JavaCompile) {
+    options.encoding = 'UTF-8'
+}
+
+tasks.register('printClasspath') {
+    doLast {
+        configurations.compileClasspath.each { println it }
+    }
+}

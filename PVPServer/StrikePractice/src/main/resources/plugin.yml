@@ -1,0 +1,174 @@
+main: ga.strikepractice.StrikePractice
+description: Practice Core - 1v1, 2v2, Bots Fights, PvP Events, Parties, Build fights and more, Cracked by Naer, discord discord.gg/t5aqB7hcSw
+version: 3.5.2-SNAPSHOT-Cracked-by-Naer
+name: StrikePractice
+author: Toppe5
+softdepend: [Vault, Citizens, PlaceholderAPI, SketchSM, Multiverse-Core]
+commands:
+  language:
+    aliases: [lang, kieli, språken]
+    permission: strikepractice.language
+  languageitem:
+    permission: strikepractice.admin
+    aliases: [langitem, li]
+  ranks:
+    permission: strikepractice.ranks
+    aliases: [rank, strikeranks]
+  spawnitem:
+    aliases: [spawnitems]
+    permission: strikepractice.admin
+  strikeffa:
+    permission: strikepractice.admin
+    aliases: [ffa, ffasetup]
+  ffaarena:
+    aliases: [strikeffaarena]
+    permission: strikepractice.ffaarena
+  stats:
+    permission: strikepractice.stats
+    aliases: [statistics, elo]
+  strikepractice:
+    permission: strikepractice.admin
+    aliases: [sprac, practice, pvppractice, practicepvp]
+  matchlimit:
+    permission: strikepractice.admin
+    aliases: [matchlimits, rankedlimits, unrankedlimits]
+  premiummatches:
+    permission: strikepractice.admin
+  playersettings:
+    permission: strikepractice.playersettings
+    aliases: [settings, psettings]
+  playback:
+    permission: strikepractice.playback
+    aliases: [previousfights, replay]
+  customkit:
+    permission: strikepractice.customkit
+    aliases: [customgamemode]
+  arena:
+    permission: strikepractice.admin
+    aliases: [battlearena]
+  fightinfo:
+    permission: strikepractice.fightinfo
+    aliases: [fightinventory, fightinv, clickablefightinventory]
+  previewkit:
+    permission: strikepractice.previewkit
+    aliases: [preview, kitpreview]
+  lms:
+    permission: strikepractice.lms.command
+    aliases: [lastmanstanding]
+  battlekit:
+    permission: strikepractice.admin
+  juggernaut:
+    permission: strikepractice.juggernaut.command
+  spectate:
+    permission: strikepractice.spectate
+    aliases: [spec, spectator]
+  events:
+    permission: strikepractice.eventsgui
+    aliases: [eventgui, eventsgui]
+  brackets:
+    permission: strikepractice.brackets.command
+    aliases: [strikebrackets, 1v1tournament, tournament]
+  sumo:
+    permission: strikepractice.sumo.command
+    aliases: [strikesumo]
+  koth:
+    permission: strikepractice.koth.command
+  party:
+    permission: strikepractice.party
+    aliases: [team, teams, parties, p]
+  duel:
+    permission: strikepractice.duel
+    aliases: [1v1, dueltoggle]
+  queue:
+    permission: strikepractice.queue
+    aliases: [match, anon, unranked, ranked, battle, premiumqueue]
+  2v2:
+    permission: strikepractice.2v2
+    aliases: [2v2queue, partyqueue, 2v2ranked, 2v2unranked]
+  kiteditor:
+    permission: strikepractice.kiteditor
+    aliases: [editkits]
+  botduel:
+    permission: strikepractice.botduel
+    aliases: [pvpbot]
+  hostevent:
+    permission: strikepractice.hostevent
+    aliases: [automaticevent]
+  togglescoreboard:
+    permission: strikepractice.togglescoreboard
+    aliases: [sbtoggle, scoreboardtoggle, tsb]
+  day:
+  clickedchatwithoutaction:
+  night:
+  practicecommands:
+  sun:
+  ping:
+  report:
+
+permissions:
+  strikepractice.stats:
+    default: true
+  strikepractice.ffaarena:
+    default: true
+  strikepractice.eventsgui:
+    default: true
+  strikepractice.kiteditor:
+    default: true
+  strikepractice.premiumqueue:
+    default: true
+  strikepractice.botduel:
+    default: true
+  strikepractice.juggernaut.command:
+    default: true
+  strikepractice.brackets.command:
+    default: true
+  strikepractice.sumo.command:
+    default: true
+  strikepractice.lms.command:
+    default: true
+  strikepractice.koth.command:
+    default: true
+  strikepractice.party:
+    default: true
+  strikepractice.openparty:
+    default: true
+  strikepractice.spectate:
+    default: true
+  strikepractice.customkit:
+    default: true
+  strikepractice.ranks:
+    default: true
+  strikepractice.playback:
+    default: true
+  strikepractice.customkit.armor:
+    default: true
+  strikepractice.customkit.combo:
+    default: true
+  strikepractice.customkit.horse:
+    default: true
+  strikepractice.customkit.build:
+    default: true
+  strikepractice.customkit.bow:
+    default: true
+  strikepractice.partyplayback:
+    default: true
+  strikepractice.partybots:
+    default: true
+  strikepractice.language:
+    default: true
+  strikepractice.playersettings:
+    default: true
+  strikepractice.togglescoreboard:
+    default: true
+  strikepractice.queue:
+    default: true
+  strikepractice.2v2:
+    default: true
+  strikepractice.duel:
+    default: true
+  strikepractice.previewkit:
+    default: true
+  strikepractice.fightinfo:
+    default: true
+  strikepractice.mapselector:
+    default: true
