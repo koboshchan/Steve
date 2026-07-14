@@ -474,8 +474,9 @@ def training_worker(total_steps, resume=False, difficulty="easy"):
     model_path = "ppo_minecraft_pvp"
     
     if resume and os.path.exists(model_path + ".zip"):
-        print(f"Resuming training: Loading existing model weights from '{model_path}.zip'...")
-        model = PPO.load(model_path, env=envs, device=device)
+        print(f"Resuming training: Loading existing model weights from '{model_path}.zip' with optimized batch size (256)...")
+        custom_objects = {"batch_size": 256}
+        model = PPO.load(model_path, env=envs, device=device, custom_objects=custom_objects)
     else:
         if resume:
             print(f"WARNING: '--resume' was set, but no existing model checkpoint '{model_path}.zip' was found.")
@@ -491,7 +492,7 @@ def training_worker(total_steps, resume=False, difficulty="easy"):
             env=envs,
             learning_rate=3e-4,
             n_steps=2048,
-            batch_size=64,
+            batch_size=256,
             n_epochs=10,
             gamma=0.99,
             gae_lambda=0.95,
