@@ -41,22 +41,66 @@ class ThreadBridge:
 
     def step_exchange(self, action_dict):
         # Called by MinecraftPvPEnv.step() inside the training thread
-        self.action_queue.put(action_dict)
+        # Clear any stale actions in action_queue to prevent blocking
+        while not self.action_queue.empty():
+            try:
+                self.action_queue.get_nowait()
+            except queue.Empty:
+                break
         try:
-            state = self.state_queue.get(timeout=10.0)
+            self.action_queue.put_nowait(action_dict)
+        except queue.Full:
+            pass
+
+        # If client is disconnected, raise ConnectionDroppedException immediately
+        if not self.client_connected.is_set():
+            raise ConnectionDroppedException("Client disconnected")
+
+        try:
+            # Try to get the next state from the client instantly
+            state = self.state_queue.get_nowait()
         except queue.Empty:
-            raise ConnectionDroppedException("Client idle timeout (kicked or in menu)")
+            # If the queue is empty but the client is still connected,
+            # it means the client is loading the world or in transition.
+            # We rate-limit the environment thread by sleeping for 50ms,
+            # and return a fake lobby state to keep the training loop ticking
+            # without blocking other parallel environments.
+            time.sleep(0.05)
+            state = {
+                "hp": 1.0, "vel_x": 0.0, "vel_y": 0.0, "vel_z": 0.0,
+                "y_ground": 0.0, "active_item": 0.0, "opp_hp": 1.0,
+                "opp_vel_x": 0.0, "opp_vel_y": 0.0, "opp_vel_z": 0.0,
+                "opp_rel_x": 0.0, "opp_rel_y": 0.0, "opp_rel_z": 0.0,
+                "target_dist": 999.0, "yaw_delta": 0.0, "pitch_delta": 0.0,
+                "swing_cooldown": 0.0, "is_sprinting": False,
+                "in_match": False, "opp_found": False
+            }
+
         if state is None:
             raise ConnectionDroppedException("Client disconnected")
         return state
 
     def reset_exchange(self, env_idx):
         # Called by MinecraftPvPEnv.reset() inside the training thread
-        tqdm.write(f"Gymnasium Environment {env_idx} resetting, waiting for client tick data...")
+        if not self.client_connected.is_set():
+            raise ConnectionDroppedException("Client disconnected")
+
         try:
-            state = self.state_queue.get(timeout=10.0)
+            state = self.state_queue.get_nowait()
         except queue.Empty:
-            raise ConnectionDroppedException("Client idle timeout (kicked or in menu)")
+            # During reset, if the client is loading the world or between matches,
+            # return a fake lobby state immediately. The lobby pass-through in
+            # step() will handle the rate-limiting on subsequent steps.
+            state = {
+                "hp": 1.0, "vel_x": 0.0, "vel_y": 0.0, "vel_z": 0.0,
+                "y_ground": 0.0, "active_item": 0.0, "opp_hp": 1.0,
+                "opp_vel_x": 0.0, "opp_vel_y": 0.0, "opp_vel_z": 0.0,
+                "opp_rel_x": 0.0, "opp_rel_y": 0.0, "opp_rel_z": 0.0,
+                "target_dist": 999.0, "yaw_delta": 0.0, "pitch_delta": 0.0,
+                "swing_cooldown": 0.0, "is_sprinting": False,
+                "in_match": False, "opp_found": False
+            }
+
         if state is None:
             raise ConnectionDroppedException("Client disconnected")
         return state
