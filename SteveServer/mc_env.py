@@ -143,6 +143,7 @@ class MinecraftPvPEnv(gym.Env):
         components = {
             "aim":                  0.0,
             "distance":             0.0,
+            "distance_far_penalty": 0.0,
             "look_pitch_penalty":   0.0,
             "facing_away_penalty":  0.0,
             "dmg_dealt":            0.0,
@@ -194,6 +195,10 @@ class MinecraftPvPEnv(gym.Env):
             # Punish if the agent is looking more than 150 degrees away from the opponent
             if aim_error > 150.0:
                 components["facing_away_penalty"] = -0.05
+
+        # No matter what, punish when more than 10 blocks away
+        if target_dist > 10.0:
+            components["distance_far_penalty"] = -0.075
 
         # 5. Damage dealt
         if opp_hp < prev_opp_hp:
