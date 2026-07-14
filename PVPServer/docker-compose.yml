@@ -15,6 +15,8 @@ services:
         https://github.com/cmclient/FAWE-1.8-Reborn/releases/download/fawe-1.8-reborn/FastAsyncWorldEdit-Reborn-bukkit-21.03.26-5ff3a9b-1286-22.3.9.jar
       ONLINE_MODE: "FALSE"
       RATE_LIMIT: "0"
+      MEMORY: "8G"
+      USE_AIKAR_FLAGS: "TRUE"
     volumes:
       # attach the relative directory 'data' to the container's /data path
       - ./data:/data
