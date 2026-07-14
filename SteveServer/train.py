@@ -409,7 +409,7 @@ def run_websocket_server():
     loop.run_until_complete(start_server())
 
 # 3. Training Worker
-def training_worker(total_steps, resume=False, difficulty="easy"):
+def training_worker(total_steps, resume=False, difficulty="easy", no_action_suggest=False):
     global num_envs, bridges, training_started
     
     print("Awaiting connection from Minecraft on ws://localhost:8765...")
@@ -466,7 +466,7 @@ def training_worker(total_steps, resume=False, difficulty="easy"):
             future.result()   # re-raise any ConnectionDroppedException
 
     def make_env(env_idx):
-        return lambda: MinecraftPvPEnv(websocket_server_queue=bridges[env_idx], env_idx=env_idx, difficulty=difficulty)
+        return lambda: MinecraftPvPEnv(websocket_server_queue=bridges[env_idx], env_idx=env_idx, difficulty=difficulty, no_action_suggest=no_action_suggest)
         
     envs = ThreadedVecEnv([make_env(i) for i in range(num_envs)])
     envs = VecFrameStack(envs, n_stack=4)
@@ -541,6 +541,11 @@ def main():
         default="easy",
         help="Difficulty level for bot duel (default: easy)."
     )
+    parser.add_argument(
+        "--no-action-suggest",
+        action="store_true",
+        help="Disable auxiliary action suggest/heuristic rewards (look pitch and facing away penalties)."
+    )
     args = parser.parse_args()
 
     # Start the WebSocket server in a background daemon thread
@@ -548,7 +553,7 @@ def main():
     ws_thread.start()
 
     # Run the training loop in the main thread so it captures Ctrl+C (KeyboardInterrupt)
-    training_worker(total_steps=args.steps, resume=args.resume, difficulty=args.difficulty)
+    training_worker(total_steps=args.steps, resume=args.resume, difficulty=args.difficulty, no_action_suggest=args.no_action_suggest)
 
 if __name__ == "__main__":
     main()

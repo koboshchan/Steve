@@ -11,10 +11,11 @@ class MinecraftPvPEnv(gym.Env):
     """
     metadata = {"render_modes": ["human"]}
 
-    def __init__(self, websocket_server_queue=None, env_idx=0, difficulty="easy"):
+    def __init__(self, websocket_server_queue=None, env_idx=0, difficulty="easy", no_action_suggest=False):
         super(MinecraftPvPEnv, self).__init__()
         self.env_idx = env_idx
         self.difficulty = difficulty
+        self.no_action_suggest = no_action_suggest
 
         # Action Space (5 discrete inputs, MultiDiscrete):
         # 0: Movement -> 9 bins (0: idle, 1: w, 2: wd, 3: wa, 4: s, 5: sa, 6: sd, 7: a, 8: d)
@@ -170,17 +171,18 @@ class MinecraftPvPEnv(gym.Env):
             # Linear penalty scaling from 0.0 (at 100 deg) to -0.2 (at 180 deg)
             components["aim"] = -0.2 * ((aim_error - 100.0) / 80.0)
 
-        # 3. Look extreme pitch penalty (looking too close to sky or ground)
-        # Minecraft pitch ranges from -90.0 (up) to 90.0 (down).
-        # Punish if looking within 25 degrees of either limit (i.e. abs(pitch) >= 65.0)
-        pitch = current_state.get("pitch", 0.0)
-        if abs(pitch) >= 65.0:
-            components["look_pitch_penalty"] = -0.05
+        if not self.no_action_suggest:
+            # 3. Look extreme pitch penalty (looking too close to sky or ground)
+            # Minecraft pitch ranges from -90.0 (up) to 90.0 (down).
+            # Punish if looking within 25 degrees of either limit (i.e. abs(pitch) >= 65.0)
+            pitch = current_state.get("pitch", 0.0)
+            if abs(pitch) >= 65.0:
+                components["look_pitch_penalty"] = -0.05
 
-        # 4. Facing away penalty
-        # Punish if the agent is looking more than 150 degrees away from the opponent
-        if aim_error > 150.0:
-            components["facing_away_penalty"] = -0.05
+            # 4. Facing away penalty
+            # Punish if the agent is looking more than 150 degrees away from the opponent
+            if aim_error > 150.0:
+                components["facing_away_penalty"] = -0.05
 
         # 5. Damage dealt
         if opp_hp < prev_opp_hp:
