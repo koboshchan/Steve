@@ -56,15 +56,17 @@ class ThreadBridge:
         if not self.client_connected.is_set():
             raise ConnectionDroppedException("Client disconnected")
 
+        # Absorb network jitter: if the client is actively in a match, wait up to 100ms
+        # for their telemetry packet to arrive. Otherwise, if they are loading or in the
+        # lobby, do a non-blocking check to keep execution moving.
+        in_match_active = self.in_match_event.is_set()
         try:
-            # Try to get the next state from the client instantly
-            state = self.state_queue.get_nowait()
+            if in_match_active:
+                state = self.state_queue.get(timeout=0.1)
+            else:
+                state = self.state_queue.get_nowait()
         except queue.Empty:
-            # If the queue is empty but the client is still connected,
-            # it means the client is loading the world or in transition.
-            # We rate-limit the environment thread by sleeping for 50ms,
-            # and return a fake lobby state to keep the training loop ticking
-            # without blocking other parallel environments.
+            # Rate-limit the environment thread by sleeping for 50ms (corresponds to 20Hz tick)
             time.sleep(0.05)
             state = {
                 "hp": 1.0, "vel_x": 0.0, "vel_y": 0.0, "vel_z": 0.0,
@@ -86,11 +88,9 @@ class ThreadBridge:
             raise ConnectionDroppedException("Client disconnected")
 
         try:
-            state = self.state_queue.get_nowait()
+            # During reset, wait up to 100ms for initial world-load telemetry
+            state = self.state_queue.get(timeout=0.1)
         except queue.Empty:
-            # During reset, if the client is loading the world or between matches,
-            # return a fake lobby state immediately. The lobby pass-through in
-            # step() will handle the rate-limiting on subsequent steps.
             state = {
                 "hp": 1.0, "vel_x": 0.0, "vel_y": 0.0, "vel_z": 0.0,
                 "y_ground": 0.0, "active_item": 0.0, "opp_hp": 1.0,
