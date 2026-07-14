@@ -1,0 +1,25 @@
+services:
+  mc:
+    image: itzg/minecraft-server:java8
+    pull_policy: daily
+    tty: true
+    stdin_open: true
+    ports:
+      - "25567:25565"
+    environment:
+      EULA: "TRUE"
+      TYPE: "PAPER"
+      VERSION: "1.8.8"
+      PAPER_BUILD: "445"
+      PLUGINS: | # https://github.com/revere-group/alley-practice/releases/download/v2.2.15/Alley-2.2.15.jar
+        https://github.com/cmclient/FAWE-1.8-Reborn/releases/download/fawe-1.8-reborn/FastAsyncWorldEdit-Reborn-bukkit-21.03.26-5ff3a9b-1286-22.3.9.jar
+    volumes:
+      # attach the relative directory 'data' to the container's /data path
+      - ./data:/data
+    # depends_on:
+    #   - mongo
+
+  # mongo:
+  #   image: mongo:latest
+  #   volumes:
+  #     - ./mongo-data:/data/db

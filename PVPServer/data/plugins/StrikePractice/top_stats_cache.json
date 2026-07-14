@@ -1,0 +1,53 @@
+{
+  "elo_sumobestof3elo": {
+    "kobosh": 1000.0
+  },
+  "kills": {
+    "kobosh": 0.0
+  },
+  "elo_comboelo": {
+    "kobosh": 1000.0
+  },
+  "elo_axepvpelo": {
+    "kobosh": 1000.0
+  },
+  "elo_builduhcelo": {
+    "kobosh": 1000.0
+  },
+  "elo_debuffelo": {
+    "kobosh": 1000.0
+  },
+  "party_vs_party_wins": {
+    "kobosh": 0.0
+  },
+  "brackets": {
+    "kobosh": 0.0
+  },
+  "elo_hcfelo": {
+    "kobosh": 1000.0
+  },
+  "lms": {
+    "kobosh": 0.0
+  },
+  "elo_sumoelo": {
+    "kobosh": 1000.0
+  },
+  "elo_soupelo": {
+    "kobosh": 1000.0
+  },
+  "elo_nodebuffelo": {
+    "kobosh": 1000.0
+  },
+  "elo_nodebuffelopremium": {
+    "kobosh": 1000.0
+  },
+  "global_elo": {
+    "kobosh": 1000.0
+  },
+  "elo_gappleelo": {
+    "kobosh": 1000.0
+  },
+  "deaths": {
+    "kobosh": 0.0
+  }
+}

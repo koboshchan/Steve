@@ -1,0 +1,701 @@
+arenas:
+- ==: Arena
+  loc2:
+    ==: Location
+    world: Arenas
+    x: -104.610268854469
+    y: 17.0
+    z: -28.51908099068394
+    pitch: 90.0
+    yaw: 316.79724
+  corner1:
+    ==: Location
+    world: Arenas
+    x: -106.57667784014203
+    y: 47.0
+    z: -30.576435666118982
+    pitch: 90.0
+    yaw: 344.09723
+  corner2:
+    ==: Location
+    world: Arenas
+    x: -26.69999998807907
+    y: 13.747810600558285
+    z: 50.50287109311304
+    pitch: 90.0
+    yaw: 107.84747
+  loc1:
+    ==: Location
+    world: Arenas
+    x: -28.513865381286948
+    y: 17.0
+    z: 48.37429631579337
+    pitch: 90.0
+    yaw: 134.54736
+  display-name: null
+  center:
+    ==: Location
+    world: Arenas
+    x: -67.98168291887167
+    y: 17.08317609148589
+    z: 10.625995363198003
+    pitch: 90.0
+    yaw: 176.09686
+  name: '111'
+  icon:
+    ==: org.bukkit.inventory.ItemStack
+    type: WOOL
+    meta:
+      ==: ItemMeta
+      meta-type: UNSPECIFIC
+      display-name: '111'
+- ==: Arena
+  loc2:
+    ==: Location
+    world: Arenas
+    x: 20.389731145531
+    y: 14.0
+    z: -2.5190809906839404
+    pitch: 90.0
+    yaw: 316.79724
+  corner1:
+    ==: Location
+    world: Arenas
+    x: 18.42332215985797
+    y: 44.0
+    z: -4.576435666118983
+    pitch: 90.0
+    yaw: 344.09723
+  corner2:
+    ==: Location
+    world: Arenas
+    x: 98.30000001192093
+    y: 10.747810600558285
+    z: 76.50287109311304
+    pitch: 90.0
+    yaw: 107.84747
+  loc1:
+    ==: Location
+    world: Arenas
+    x: 96.48613461871305
+    y: 14.0
+    z: 74.37429631579337
+    pitch: 90.0
+    yaw: 134.54736
+  display-name: null
+  center:
+    ==: Location
+    world: Arenas
+    x: 57.67018791320413
+    y: 14.0
+    z: 36.1991210067068
+    pitch: 90.0
+    yaw: 176.09686
+  name: '1'
+  icon:
+    ==: org.bukkit.inventory.ItemStack
+    type: WOOL
+    meta:
+      ==: ItemMeta
+      meta-type: UNSPECIFIC
+      display-name: '1'
+- ==: Arena
+  loc2:
+    ==: Location
+    world: Arenas
+    x: -226.61026885446898
+    y: 19.0
+    z: -51.51908099068394
+    pitch: 90.0
+    yaw: 316.79724
+  corner1:
+    ==: Location
+    world: Arenas
+    x: -228.57667784014203
+    y: 49.0
+    z: -53.57643566611898
+    pitch: 90.0
+    yaw: 344.09723
+  corner2:
+    ==: Location
+    world: Arenas
+    x: -148.69999998807907
+    y: 15.747810600558285
+    z: 27.502871093113043
+    pitch: 90.0
+    yaw: 107.84747
+  loc1:
+    ==: Location
+    world: Arenas
+    x: -150.51386538128696
+    y: 19.0
+    z: 25.374296315793373
+    pitch: 90.0
+    yaw: 134.54736
+  display-name: null
+  center:
+    ==: Location
+    world: Arenas
+    x: -189.34708316155368
+    y: 19.963712390025226
+    z: -12.563112349676551
+    pitch: 90.0
+    yaw: 176.09686
+  name: '12'
+  icon:
+    ==: org.bukkit.inventory.ItemStack
+    type: WOOL
+    meta:
+      ==: ItemMeta
+      meta-type: UNSPECIFIC
+      display-name: '12'
+- ==: Arena
+  loc2:
+    ==: Location
+    world: Arenas
+    x: -266.610268854469
+    y: 31.0
+    z: 74.48091900931607
+    pitch: 90.0
+    yaw: 316.79724
+  corner1:
+    ==: Location
+    world: Arenas
+    x: -268.576677840142
+    y: 61.0
+    z: 72.42356433388102
+    pitch: 90.0
+    yaw: 344.09723
+  corner2:
+    ==: Location
+    world: Arenas
+    x: -188.69999998807907
+    y: 27.747810600558285
+    z: 153.50287109311304
+    pitch: 90.0
+    yaw: 107.84747
+  loc1:
+    ==: Location
+    world: Arenas
+    x: -190.51386538128696
+    y: 31.0
+    z: 151.37429631579337
+    pitch: 90.0
+    yaw: 134.54736
+  display-name: null
+  center:
+    ==: Location
+    world: Arenas
+    x: -229.7413144792663
+    y: 31.000000000000014
+    z: 113.58339814961066
+    pitch: 90.0
+    yaw: 176.09686
+  name: '13'
+  icon:
+    ==: org.bukkit.inventory.ItemStack
+    type: WOOL
+    meta:
+      ==: ItemMeta
+      meta-type: UNSPECIFIC
+      display-name: '13'
+- ==: Arena
+  loc2:
+    ==: Location
+    world: Arenas
+    x: -135.61026885446898
+    y: 28.0
+    z: 202.48091900931607
+    pitch: 90.0
+    yaw: 316.79724
+  corner1:
+    ==: Location
+    world: Arenas
+    x: -137.57667784014203
+    y: 58.0
+    z: 200.42356433388102
+    pitch: 90.0
+    yaw: 344.09723
+  corner2:
+    ==: Location
+    world: Arenas
+    x: -57.69999998807907
+    y: 24.747810600558285
+    z: 281.5028710931131
+    pitch: 90.0
+    yaw: 107.84747
+  loc1:
+    ==: Location
+    world: Arenas
+    x: -59.51386538128695
+    y: 28.0
+    z: 279.37429631579334
+    pitch: 90.0
+    yaw: 134.54736
+  display-name: null
+  center:
+    ==: Location
+    world: Arenas
+    x: -98.47532590708248
+    y: 28.607128169276248
+    z: 241.31324021916868
+    pitch: 90.0
+    yaw: 176.09686
+  name: '15'
+  icon:
+    ==: org.bukkit.inventory.ItemStack
+    type: WOOL
+    meta:
+      ==: ItemMeta
+      meta-type: UNSPECIFIC
+      display-name: '15'
+- ==: Arena
+  loc2:
+    ==: Location
+    world: Arenas
+    x: -269.610268854469
+    y: 28.0
+    z: 320.48091900931604
+    pitch: 90.0
+    yaw: 316.79724
+  corner1:
+    ==: Location
+    world: Arenas
+    x: -271.576677840142
+    y: 58.0
+    z: 318.423564333881
+    pitch: 90.0
+    yaw: 344.09723
+  corner2:
+    ==: Location
+    world: Arenas
+    x: -191.69999998807907
+    y: 24.747810600558285
+    z: 399.5028710931131
+    pitch: 90.0
+    yaw: 107.84747
+  loc1:
+    ==: Location
+    world: Arenas
+    x: -193.51386538128696
+    y: 28.0
+    z: 397.37429631579334
+    pitch: 90.0
+    yaw: 134.54736
+  display-name: null
+  center:
+    ==: Location
+    world: Arenas
+    x: -232.10089388061482
+    y: 28.607128169276248
+    z: 359.6930271898448
+    pitch: 90.0
+    yaw: 176.09686
+  name: '17'
+  icon:
+    ==: org.bukkit.inventory.ItemStack
+    type: WOOL
+    meta:
+      ==: ItemMeta
+      meta-type: UNSPECIFIC
+      display-name: '17'
+- ==: Arena
+  loc2:
+    ==: Location
+    world: Arenas
+    x: -403.610268854469
+    y: 29.0
+    z: 209.48091900931607
+    pitch: 90.0
+    yaw: 316.79724
+  corner1:
+    ==: Location
+    world: Arenas
+    x: -405.576677840142
+    y: 59.0
+    z: 207.42356433388102
+    pitch: 90.0
+    yaw: 344.09723
+  corner2:
+    ==: Location
+    world: Arenas
+    x: -325.69999998807907
+    y: 25.747810600558285
+    z: 288.5028710931131
+    pitch: 90.0
+    yaw: 107.84747
+  loc1:
+    ==: Location
+    world: Arenas
+    x: -327.51386538128696
+    y: 29.0
+    z: 286.37429631579334
+    pitch: 90.0
+    yaw: 134.54736
+  display-name: null
+  center:
+    ==: Location
+    world: Arenas
+    x: -366.18664411045074
+    y: 29.417115896812017
+    z: 248.56735582305194
+    pitch: 90.0
+    yaw: 176.09686
+  name: '19'
+  icon:
+    ==: org.bukkit.inventory.ItemStack
+    type: WOOL
+    meta:
+      ==: ItemMeta
+      meta-type: UNSPECIFIC
+      display-name: '19'
+- ==: Arena
+  loc2:
+    ==: Location
+    world: Arenas
+    x: -10.610268854468998
+    y: 11.0
+    z: 129.48091900931607
+    pitch: 90.0
+    yaw: 316.79724
+  corner1:
+    ==: Location
+    world: Arenas
+    x: -12.576677840142025
+    y: 41.0
+    z: 127.42356433388102
+    pitch: 90.0
+    yaw: 344.09723
+  corner2:
+    ==: Location
+    world: Arenas
+    x: 67.30000001192093
+    y: 7.747810600558285
+    z: 208.50287109311304
+    pitch: 90.0
+    yaw: 107.84747
+  loc1:
+    ==: Location
+    world: Arenas
+    x: 65.48613461871305
+    y: 11.0
+    z: 206.37429631579337
+    pitch: 90.0
+    yaw: 134.54736
+  display-name: null
+  center:
+    ==: Location
+    world: Arenas
+    x: 26.84158338198901
+    y: 11.678728620449387
+    z: 168.36056906144597
+    pitch: 90.0
+    yaw: 176.09686
+  name: '112'
+  icon:
+    ==: org.bukkit.inventory.ItemStack
+    type: WOOL
+    meta:
+      ==: ItemMeta
+      meta-type: UNSPECIFIC
+      display-name: '112'
+- ==: Arena
+  loc2:
+    ==: Location
+    world: Arenas
+    x: -126.610268854469
+    y: 21.0
+    z: -137.51908099068393
+    pitch: 90.0
+    yaw: 316.79724
+  corner1:
+    ==: Location
+    world: Arenas
+    x: -128.57667784014203
+    y: 51.0
+    z: -139.57643566611898
+    pitch: 90.0
+    yaw: 344.09723
+  corner2:
+    ==: Location
+    world: Arenas
+    x: -48.69999998807907
+    y: 17.747810600558285
+    z: -58.49712890688696
+    pitch: 90.0
+    yaw: 107.84747
+  loc1:
+    ==: Location
+    world: Arenas
+    x: -50.51386538128695
+    y: 21.0
+    z: -60.62570368420663
+    pitch: 90.0
+    yaw: 134.54736
+  display-name: null
+  center:
+    ==: Location
+    world: Arenas
+    x: -89.11614970681124
+    y: 21.380058582810076
+    z: -98.00784448434747
+    pitch: 90.0
+    yaw: 176.09686
+  name: '10'
+  icon:
+    ==: org.bukkit.inventory.ItemStack
+    type: WOOL
+    meta:
+      ==: ItemMeta
+      meta-type: UNSPECIFIC
+      display-name: '10'
+- ==: Arena
+  loc2:
+    ==: Location
+    world: Arenas
+    x: -139.61026885446898
+    y: 28.0
+    z: 85.48091900931607
+    pitch: 90.0
+    yaw: 316.79724
+  corner1:
+    ==: Location
+    world: Arenas
+    x: -141.57667784014203
+    y: 58.0
+    z: 83.42356433388102
+    pitch: 90.0
+    yaw: 344.09723
+  corner2:
+    ==: Location
+    world: Arenas
+    x: -61.69999998807907
+    y: 24.747810600558285
+    z: 164.50287109311304
+    pitch: 90.0
+    yaw: 107.84747
+  loc1:
+    ==: Location
+    world: Arenas
+    x: -63.51386538128695
+    y: 28.0
+    z: 162.37429631579337
+    pitch: 90.0
+    yaw: 134.54736
+  display-name: null
+  center:
+    ==: Location
+    world: Arenas
+    x: -102.36806008529317
+    y: 28.264555902031663
+    z: 124.18621660386424
+    pitch: 90.0
+    yaw: 176.09686
+  name: '11'
+  icon:
+    ==: org.bukkit.inventory.ItemStack
+    type: WOOL
+    meta:
+      ==: ItemMeta
+      meta-type: UNSPECIFIC
+      display-name: '11'
+- ==: Arena
+  loc2:
+    ==: Location
+    world: Arenas
+    x: -275.610268854469
+    y: 28.0
+    z: 203.48091900931607
+    pitch: 90.0
+    yaw: 316.79724
+  corner1:
+    ==: Location
+    world: Arenas
+    x: -277.576677840142
+    y: 58.0
+    z: 201.42356433388102
+    pitch: 90.0
+    yaw: 344.09723
+  corner2:
+    ==: Location
+    world: Arenas
+    x: -197.69999998807907
+    y: 24.747810600558285
+    z: 282.5028710931131
+    pitch: 90.0
+    yaw: 107.84747
+  loc1:
+    ==: Location
+    world: Arenas
+    x: -199.51386538128696
+    y: 28.0
+    z: 280.37429631579334
+    pitch: 90.0
+    yaw: 134.54736
+  display-name: null
+  center:
+    ==: Location
+    world: Arenas
+    x: -238.069416235797
+    y: 28.462715000397836
+    z: 242.03866417627728
+    pitch: 90.0
+    yaw: 176.09686
+  name: '14'
+  icon:
+    ==: org.bukkit.inventory.ItemStack
+    type: WOOL
+    meta:
+      ==: ItemMeta
+      meta-type: UNSPECIFIC
+      display-name: '14'
+- ==: Arena
+  loc2:
+    ==: Location
+    world: Arenas
+    x: -397.610268854469
+    y: 28.0
+    z: 72.48091900931607
+    pitch: 90.0
+    yaw: 316.79724
+  corner1:
+    ==: Location
+    world: Arenas
+    x: -399.576677840142
+    y: 58.0
+    z: 70.42356433388102
+    pitch: 90.0
+    yaw: 344.09723
+  corner2:
+    ==: Location
+    world: Arenas
+    x: -319.69999998807907
+    y: 24.747810600558285
+    z: 151.50287109311304
+    pitch: 90.0
+    yaw: 107.84747
+  loc1:
+    ==: Location
+    world: Arenas
+    x: -321.51386538128696
+    y: 28.0
+    z: 149.37429631579337
+    pitch: 90.0
+    yaw: 134.54736
+  display-name: null
+  center:
+    ==: Location
+    world: Arenas
+    x: -360.02657729982553
+    y: 28.107841271675362
+    z: 111.84913187343881
+    pitch: 90.0
+    yaw: 176.09686
+  name: '110'
+  icon:
+    ==: org.bukkit.inventory.ItemStack
+    type: WOOL
+    meta:
+      ==: ItemMeta
+      meta-type: UNSPECIFIC
+      display-name: '110'
+- ==: Arena
+  loc2:
+    ==: Location
+    world: Arenas
+    x: -135.61026885446898
+    y: 28.0
+    z: 322.48091900931604
+    pitch: 90.0
+    yaw: 316.79724
+  corner1:
+    ==: Location
+    world: Arenas
+    x: -137.57667784014203
+    y: 58.0
+    z: 320.423564333881
+    pitch: 90.0
+    yaw: 344.09723
+  corner2:
+    ==: Location
+    world: Arenas
+    x: -57.69999998807907
+    y: 24.747810600558285
+    z: 401.5028710931131
+    pitch: 90.0
+    yaw: 107.84747
+  loc1:
+    ==: Location
+    world: Arenas
+    x: -59.51386538128695
+    y: 28.0
+    z: 399.37429631579334
+    pitch: 90.0
+    yaw: 134.54736
+  display-name: null
+  center:
+    ==: Location
+    world: Arenas
+    x: -98.34739072045932
+    y: 28.467128169276247
+    z: 361.06844726299323
+    pitch: 90.0
+    yaw: 176.09686
+  name: '16'
+  icon:
+    ==: org.bukkit.inventory.ItemStack
+    type: WOOL
+    meta:
+      ==: ItemMeta
+      meta-type: UNSPECIFIC
+      display-name: '16'
+- ==: Arena
+  loc2:
+    ==: Location
+    world: Arenas
+    x: -402.610268854469
+    y: 28.0
+    z: 319.48091900931604
+    pitch: 90.0
+    yaw: 316.79724
+  corner1:
+    ==: Location
+    world: Arenas
+    x: -404.576677840142
+    y: 58.0
+    z: 317.423564333881
+    pitch: 90.0
+    yaw: 344.09723
+  corner2:
+    ==: Location
+    world: Arenas
+    x: -324.69999998807907
+    y: 24.747810600558285
+    z: 398.5028710931131
+    pitch: 90.0
+    yaw: 107.84747
+  loc1:
+    ==: Location
+    world: Arenas
+    x: -326.51386538128696
+    y: 28.0
+    z: 396.37429631579334
+    pitch: 90.0
+    yaw: 134.54736
+  display-name: null
+  center:
+    ==: Location
+    world: Arenas
+    x: -365.8659526208952
+    y: 28.607128169276248
+    z: 358.57233158807367
+    pitch: 90.0
+    yaw: 176.09686
+  name: '18'
+  icon:
+    ==: org.bukkit.inventory.ItemStack
+    type: WOOL
+    meta:
+      ==: ItemMeta
+      meta-type: UNSPECIFIC
+      display-name: '18'
