@@ -121,7 +121,8 @@ class WebSocketCoordinator:
                     "modifier": modifier,
                     "combat_action": combat_action,
                     "mouse_delta_x": mouse_delta_x,
-                    "mouse_delta_y": mouse_delta_y
+                    "mouse_delta_y": mouse_delta_y,
+                    "is_training": False
                 }
                 
                 # Calculate reward metrics

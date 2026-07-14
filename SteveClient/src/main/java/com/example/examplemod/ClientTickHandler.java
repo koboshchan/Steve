@@ -27,6 +27,7 @@ public class ClientTickHandler {
     private int rightClickDelay = 0;
     private int commandDelay = 0;
     private String serverDifficulty = "easy";
+    private boolean isTrainingServer = false;
 
     public ClientTickHandler() {
         connectToServer();
@@ -50,35 +51,41 @@ public class ClientTickHandler {
         }
 
         try {
-        // Auto-use lime dye if present in hotbar (requeues the player for the next match)
-        int limeDyeSlot = findLimeDyeSlot();
-        if (limeDyeSlot != -1) {
-            if (rightClickDelay <= 0) {
-                mc.thePlayer.inventory.currentItem = limeDyeSlot;
-                mc.playerController.sendUseItem(mc.thePlayer, mc.theWorld, mc.thePlayer.inventory.getCurrentItem());
-                rightClickDelay = 10; // Cooldown of 10 ticks (0.5 seconds)
+        // Auto-use lime dye and command if connected to a training server
+        if (isTrainingServer) {
+            int limeDyeSlot = findLimeDyeSlot();
+            if (limeDyeSlot != -1) {
+                if (rightClickDelay <= 0) {
+                    mc.thePlayer.inventory.currentItem = limeDyeSlot;
+                    mc.playerController.sendUseItem(mc.thePlayer, mc.theWorld, mc.thePlayer.inventory.getCurrentItem());
+                    rightClickDelay = 10; // Cooldown of 10 ticks (0.5 seconds)
+                } else {
+                    rightClickDelay--;
+                }
             } else {
-                rightClickDelay--;
+                rightClickDelay = 0;
+            }
+
+            // Auto-run botduel command if queue items are present in inventory
+            if (hasQueueItems()) {
+                if (commandDelay <= 0) {
+                    System.out.println("[SteveMod] Queue items detected! Sending command: /botduel diamond random " + serverDifficulty);
+                    mc.thePlayer.sendChatMessage("/botduel diamond random " + serverDifficulty);
+                    commandDelay = 100; // Cooldown of 5 seconds (100 ticks) to prevent spamming
+                } else {
+                    commandDelay--;
+                }
+            } else {
+                commandDelay = 0; // Reset command delay when not holding queue items
             }
         } else {
             rightClickDelay = 0;
-        }
-
-        // Auto-run botduel command if queue items are present in inventory
-        if (hasQueueItems()) {
-            if (commandDelay <= 0) {
-                System.out.println("[SteveMod] Queue items detected! Sending command: /botduel diamond random " + serverDifficulty);
-                mc.thePlayer.sendChatMessage("/botduel diamond random " + serverDifficulty);
-                commandDelay = 100; // Cooldown of 5 seconds (100 ticks) to prevent spamming
-            } else {
-                commandDelay--;
-            }
-        } else {
-            commandDelay = 0; // Reset command delay when not holding queue items
+            commandDelay = 0;
         }
 
         // Auto-reconnect if connection is lost
         if (ws == null || !ws.isOpen()) {
+            isTrainingServer = false; // Reset status when connection is lost
             reconnectTimer++;
             if (reconnectTimer >= 100) { // Try to reconnect every 5 seconds (100 ticks)
                 reconnectTimer = 0;
@@ -219,6 +226,13 @@ public class ClientTickHandler {
                 // Parse difficulty if provided by the server
                 if (actions.has("difficulty")) {
                     serverDifficulty = actions.get("difficulty").getAsString();
+                }
+
+                // Parse is_training status if provided by the server, defaulting to false
+                if (actions.has("is_training")) {
+                    isTrainingServer = actions.get("is_training").getAsBoolean();
+                } else {
+                    isTrainingServer = false;
                 }
 
                 // Movement Overrides

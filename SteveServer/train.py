@@ -438,7 +438,8 @@ def training_worker(total_steps, resume=False, difficulty="easy", no_action_sugg
     print("Waiting for all clients to enter a match (concurrent per-client check)...")
     idle_action = {
         "forward_back": 0, "strafe": 0, "modifier": 0,
-        "combat_action": 0, "mouse_delta_x": 0.0, "mouse_delta_y": 0.0
+        "combat_action": 0, "mouse_delta_x": 0.0, "mouse_delta_y": 0.0,
+        "is_training": True
     }
 
     def wait_for_in_match(bridge_idx):

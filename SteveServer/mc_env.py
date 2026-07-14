@@ -242,7 +242,8 @@ class MinecraftPvPEnv(gym.Env):
             idle_action = {
                 "forward_back": 0, "strafe": 0, "modifier": 0, "combat_action": 0,
                 "mouse_delta_x": 0.0, "mouse_delta_y": 0.0,
-                "difficulty": self.difficulty
+                "difficulty": self.difficulty,
+                "is_training": True
             }
             new_state = self.ws_queue.step_exchange(idle_action)
             self.current_state = new_state
@@ -290,7 +291,8 @@ class MinecraftPvPEnv(gym.Env):
             "combat_action": combat_action,
             "mouse_delta_x": mouse_delta_x,
             "mouse_delta_y": mouse_delta_y,
-            "difficulty": self.difficulty
+            "difficulty": self.difficulty,
+            "is_training": True
         }
 
         # Send action to client and wait for next tick's observation
@@ -331,7 +333,8 @@ class MinecraftPvPEnv(gym.Env):
             # Unblock the websocket event loop since we won't call step() again for this episode
             idle_action = {
                 "forward_back": 0, "strafe": 0, "modifier": 0, "combat_action": 0,
-                "mouse_delta_x": 0.0, "mouse_delta_y": 0.0
+                "mouse_delta_x": 0.0, "mouse_delta_y": 0.0,
+                "is_training": True
             }
             # Clear any stale actions to prevent blocking
             import queue
