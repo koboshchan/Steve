@@ -141,15 +141,17 @@ class MinecraftPvPEnv(gym.Env):
             return 0.0
 
         components = {
-            "aim":                  0.0,
-            "distance":             0.0,
-            "distance_far_penalty": 0.0,
-            "look_pitch_penalty":   0.0,
-            "facing_away_penalty":  0.0,
-            "dmg_dealt":            0.0,
-            "dmg_taken":            0.0,
-            "kill":                 0.0,
-            "death":                0.0,
+            "aim":                     0.0,
+            "distance":                0.0,
+            "distance_far_penalty":    0.0,
+            "wall_proximity_penalty":  0.0,
+            "wall_corner_penalty":     0.0,
+            "look_pitch_penalty":      0.0,
+            "facing_away_penalty":     0.0,
+            "dmg_dealt":               0.0,
+            "dmg_taken":               0.0,
+            "kill":                    0.0,
+            "death":                   0.0,
         }
 
         hp      = current_state.get("hp",      1.0)
@@ -199,6 +201,30 @@ class MinecraftPvPEnv(gym.Env):
         # No matter what, punish when more than 10 blocks away
         if target_dist > 10.0:
             components["distance_far_penalty"] = -0.075
+
+        # Wall / Corner proximity penalties (no matter what)
+        front_wall_dist = float(current_state.get("front_wall_dist", 50.0))
+        right_wall_dist = float(current_state.get("right_wall_dist", 50.0))
+        back_wall_dist  = float(current_state.get("back_wall_dist", 50.0))
+        left_wall_dist  = float(current_state.get("left_wall_dist", 50.0))
+
+        near_wall = (
+            front_wall_dist <= 1.0 or
+            right_wall_dist <= 1.0 or
+            back_wall_dist  <= 1.0 or
+            left_wall_dist  <= 1.0
+        )
+        near_corner = (
+            (front_wall_dist <= 1.0 and right_wall_dist <= 1.0) or
+            (right_wall_dist <= 1.0 and back_wall_dist  <= 1.0) or
+            (back_wall_dist  <= 1.0 and left_wall_dist  <= 1.0) or
+            (left_wall_dist  <= 1.0 and front_wall_dist <= 1.0)
+        )
+
+        if near_corner:
+            components["wall_corner_penalty"] = -0.25  # Extra heavy penalty for corners
+        elif near_wall:
+            components["wall_proximity_penalty"] = -0.05  # Standard penalty for walls
 
         # 5. Damage dealt
         if opp_hp < prev_opp_hp:
