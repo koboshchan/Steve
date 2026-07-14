@@ -57,6 +57,7 @@ class MinecraftPvPEnv(gym.Env):
         # Action history tracker (3 ticks)
         self.action_history_len = 3
         self.action_history = [[0, 0, 0, 0, 0] for _ in range(self.action_history_len)]
+        self.consecutive_wall_ticks = 0
 
     def _parse_observation(self, state):
         """Converts state dictionary from Java Mod into flattened float32 numpy array of shape (41,)."""
@@ -221,10 +222,17 @@ class MinecraftPvPEnv(gym.Env):
             (left_wall_dist  <= 1.0 and front_wall_dist <= 1.0)
         )
 
-        if near_corner:
-            components["wall_corner_penalty"] = -0.25  # Extra heavy penalty for corners
-        elif near_wall:
-            components["wall_proximity_penalty"] = -0.05  # Standard penalty for walls
+        if near_corner or near_wall:
+            self.consecutive_wall_ticks += 1
+            # 5% compounding increase per tick (capped at 100 ticks to prevent numerical overflow)
+            multiplier = 1.05 ** min(self.consecutive_wall_ticks - 1, 100)
+            
+            if near_corner:
+                components["wall_corner_penalty"] = -0.25 * multiplier
+            else:
+                components["wall_proximity_penalty"] = -0.05 * multiplier
+        else:
+            self.consecutive_wall_ticks = 0
 
         # 5. Damage dealt
         if opp_hp < prev_opp_hp:
@@ -381,8 +389,9 @@ class MinecraftPvPEnv(gym.Env):
     def reset(self, seed=None, options=None):
         super().reset(seed=seed)
         
-        # Reset action history
+        # Reset action history and wall tick counter
         self.action_history = [[0, 0, 0, 0, 0] for _ in range(self.action_history_len)]
+        self.consecutive_wall_ticks = 0
         
         if self.ws_queue is not None:
             # Grab the next state from the client and return immediately.
