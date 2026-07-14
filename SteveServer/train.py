@@ -165,7 +165,7 @@ class TqdmCallback(BaseCallback):
                     # Format moving inputs
                     move_map = {0: "Idle", 1: "W (Forward)", 2: "S (Backward)"}
                     strafe_map = {0: "Idle", 1: "A (Left)", 2: "D (Right)"}
-                    combat_action_map = {0: "Idle", 1: "Attack", 2: "Block", 3: "Cast Rod", 4: "Reel Rod"}
+                    combat_action_map = {0: "Idle", 1: "Attack", 2: "Block", 3: "Use Rod"}
                     
                     move_idx = action.get("forward_back", 0)
                     strafe_idx = action.get("strafe", 0)

@@ -19,10 +19,10 @@ class MinecraftPvPEnv(gym.Env):
         # Action Space (5 discrete inputs, MultiDiscrete):
         # 0: Movement -> 9 bins (0: idle, 1: w, 2: wd, 3: wa, 4: s, 5: sa, 6: sd, 7: a, 8: d)
         # 1: Modifier -> 3 bins (0: Normal, 1: Sneak, 2: Jump)
-        # 2: Combat Action -> 5 bins (0: Idle, 1: Attack, 2: Block, 3: Cast Rod, 4: Reel Rod)
+        # 2: Combat Action -> 4 bins (0: Idle, 1: Attack, 2: Block, 3: Use Rod)
         # 3: Mouse Delta X -> 11 bins (0..10) -> (mouse_x_idx - 5) * 3.0 degrees
         # 4: Mouse Delta Y -> 9 bins (0..8) -> (mouse_y_idx - 4) * 2.5 degrees
-        self.action_space = spaces.MultiDiscrete([9, 3, 5, 11, 9])
+        self.action_space = spaces.MultiDiscrete([9, 3, 4, 11, 9])
 
         # Observation Space (24 features):
         # 1. Self HP (0.0 to 1.0)
@@ -108,14 +108,14 @@ class MinecraftPvPEnv(gym.Env):
         # Normalize actions:
         # act[0] (0..8) / 8.0
         # act[1] (0..2) / 2.0
-        # act[2] (0..4) / 4.0
+        # act[2] (0..3) / 3.0
         # act[3] (0..10) / 10.0
         # act[4] (0..8) / 8.0
         idx = 26
         for act in self.action_history:
             obs[idx]     = float(act[0]) / 8.0
             obs[idx + 1] = float(act[1]) / 2.0
-            obs[idx + 2] = float(act[2]) / 4.0
+            obs[idx + 2] = float(act[2]) / 3.0
             obs[idx + 3] = float(act[3]) / 10.0
             obs[idx + 4] = float(act[4]) / 8.0
             idx += 5
@@ -208,7 +208,7 @@ class MinecraftPvPEnv(gym.Env):
         # action is a list/array of 5 discrete indexes (MultiDiscrete)
         # 0: Movement (0..8)
         # 1: Modifier (0..2)
-        # 2: Combat Action (0..4)
+        # 2: Combat Action (0..3)
         # 3: Mouse Delta X (0..10)
         # 4: Mouse Delta Y (0..8)
         
@@ -241,7 +241,7 @@ class MinecraftPvPEnv(gym.Env):
         self.action_history.append([move_idx, modifier, combat_action, mouse_x_idx, mouse_y_idx])
         if len(self.action_history) > self.action_history_len:
             self.action_history.pop(0)
-
+  
         # 1. Movement: 9 options mapped from action[0]
         # 0: idle, 1: w, 2: wd, 3: wa, 4: s, 5: sa, 6: sd, 7: a, 8: d
         move_mappings = {
@@ -256,10 +256,10 @@ class MinecraftPvPEnv(gym.Env):
             8: (0, 2),  # D
         }
         forward_back, strafe = move_mappings.get(move_idx, (0, 0))
-
+  
         # 2. Modifier is directly mapped (0: Normal, 1: Sneak, 2: Jump)
         
-        # 3. Combat Action is directly mapped (0: Idle, 1: Attack, 2: Block, 3: Cast Rod, 4: Reel Rod)
+        # 3. Combat Action is directly mapped (0: Idle, 1: Attack, 2: Block, 3: Use Rod)
 
         # 4. Mouse Delta X, Y (0..10 mapped to -15.0..15.0 and 0..8 mapped to -10.0..10.0)
         mouse_delta_x = float((mouse_x_idx - 5) * 3.0)
