@@ -1,0 +1,3 @@
+[submodule "PVPServer/meinbot"]
+	path = PVPServer/meinbot
+	url = https://github.com/Meindo/meinbot.git

@@ -356,7 +356,7 @@ def run_websocket_server():
     loop.run_until_complete(start_server())
 
 # 3. Training Worker
-def training_worker(total_steps, resume=False):
+def training_worker(total_steps, resume=False, difficulty="easy"):
     global num_envs, bridges, training_started
     
     print("Awaiting connection from Minecraft on ws://localhost:8765...")
@@ -413,7 +413,7 @@ def training_worker(total_steps, resume=False):
             future.result()   # re-raise any ConnectionDroppedException
 
     def make_env(env_idx):
-        return lambda: MinecraftPvPEnv(websocket_server_queue=bridges[env_idx], env_idx=env_idx)
+        return lambda: MinecraftPvPEnv(websocket_server_queue=bridges[env_idx], env_idx=env_idx, difficulty=difficulty)
         
     envs = ThreadedVecEnv([make_env(i) for i in range(num_envs)])
     envs = VecFrameStack(envs, n_stack=4)
@@ -481,6 +481,12 @@ def main():
         action="store_true",
         help="Resume training from the existing model checkpoint ('ppo_minecraft_pvp.zip') if it exists."
     )
+    parser.add_argument(
+        "--difficulty",
+        type=str,
+        default="easy",
+        help="Difficulty level for bot duel (default: easy)."
+    )
     args = parser.parse_args()
 
     # Start the WebSocket server in a background daemon thread
@@ -488,7 +494,7 @@ def main():
     ws_thread.start()
 
     # Run the training loop in the main thread so it captures Ctrl+C (KeyboardInterrupt)
-    training_worker(total_steps=args.steps, resume=args.resume)
+    training_worker(total_steps=args.steps, resume=args.resume, difficulty=args.difficulty)
 
 if __name__ == "__main__":
     main()

@@ -5,6 +5,8 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiMainMenu;
 import net.minecraft.client.settings.KeyBinding;
 import net.minecraft.entity.player.EntityPlayer;
+import net.minecraft.init.Blocks;
+import net.minecraft.item.Item;
 import net.minecraft.init.Items;
 import net.minecraft.item.ItemFishingRod;
 import net.minecraft.item.ItemStack;
@@ -23,6 +25,8 @@ public class ClientTickHandler {
     private SteveWebSocketClient ws = null;
     private int reconnectTimer = 0;
     private int rightClickDelay = 0;
+    private int commandDelay = 0;
+    private String serverDifficulty = "easy";
 
     public ClientTickHandler() {
         connectToServer();
@@ -58,6 +62,19 @@ public class ClientTickHandler {
             }
         } else {
             rightClickDelay = 0;
+        }
+
+        // Auto-run botduel command if queue items are present in inventory
+        if (hasQueueItems()) {
+            if (commandDelay <= 0) {
+                System.out.println("[SteveMod] Queue items detected! Sending command: /botduel diamond random " + serverDifficulty);
+                mc.thePlayer.sendChatMessage("/botduel diamond random " + serverDifficulty);
+                commandDelay = 100; // Cooldown of 5 seconds (100 ticks) to prevent spamming
+            } else {
+                commandDelay--;
+            }
+        } else {
+            commandDelay = 0; // Reset command delay when not holding queue items
         }
 
         // Auto-reconnect if connection is lost
@@ -199,6 +216,11 @@ public class ClientTickHandler {
             JsonObject actions = ws.latestServerAction;
             ws.latestServerAction = null; // Consume action so we don't spam it during epoch updates
             try {
+                // Parse difficulty if provided by the server
+                if (actions.has("difficulty")) {
+                    serverDifficulty = actions.get("difficulty").getAsString();
+                }
+
                 // Movement Overrides
                 int move = actions.get("forward_back").getAsInt();
                 int strafe = actions.get("strafe").getAsInt();
@@ -354,5 +376,30 @@ public class ClientTickHandler {
             }
         }
         return false;
+    }
+
+    private boolean hasQueueItems() {
+        if (mc.thePlayer == null || mc.thePlayer.inventory == null) return false;
+        boolean hasAnvil = false;
+        boolean hasBlazePowder = false;
+        boolean hasEnderEye = false;
+        
+        for (ItemStack stack : mc.thePlayer.inventory.mainInventory) {
+            if (stack == null) continue;
+            
+            // Check anvil (which is block-based)
+            if (stack.getItem() == Item.getItemFromBlock(Blocks.anvil)) {
+                hasAnvil = true;
+            }
+            // Check blaze powder
+            if (stack.getItem() == Items.blaze_powder) {
+                hasBlazePowder = true;
+            }
+            // Check ender eye
+            if (stack.getItem() == Items.ender_eye) {
+                hasEnderEye = true;
+            }
+        }
+        return hasAnvil && hasBlazePowder && hasEnderEye;
     }
 }

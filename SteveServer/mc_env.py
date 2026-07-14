@@ -11,9 +11,10 @@ class MinecraftPvPEnv(gym.Env):
     """
     metadata = {"render_modes": ["human"]}
 
-    def __init__(self, websocket_server_queue=None, env_idx=0):
+    def __init__(self, websocket_server_queue=None, env_idx=0, difficulty="easy"):
         super(MinecraftPvPEnv, self).__init__()
         self.env_idx = env_idx
+        self.difficulty = difficulty
 
         # Action Space (5 discrete inputs, MultiDiscrete):
         # 0: Movement -> 9 bins (0: idle, 1: w, 2: wd, 3: wa, 4: s, 5: sa, 6: sd, 7: a, 8: d)
@@ -222,7 +223,8 @@ class MinecraftPvPEnv(gym.Env):
         if self.ws_queue is not None and (not_in_match or opp_missing):
             idle_action = {
                 "forward_back": 0, "strafe": 0, "modifier": 0, "combat_action": 0,
-                "mouse_delta_x": 0.0, "mouse_delta_y": 0.0
+                "mouse_delta_x": 0.0, "mouse_delta_y": 0.0,
+                "difficulty": self.difficulty
             }
             new_state = self.ws_queue.step_exchange(idle_action)
             self.current_state = new_state
@@ -269,7 +271,8 @@ class MinecraftPvPEnv(gym.Env):
             "modifier": modifier,
             "combat_action": combat_action,
             "mouse_delta_x": mouse_delta_x,
-            "mouse_delta_y": mouse_delta_y
+            "mouse_delta_y": mouse_delta_y,
+            "difficulty": self.difficulty
         }
 
         # Send action to client and wait for next tick's observation

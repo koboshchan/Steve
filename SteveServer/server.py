@@ -3,6 +3,7 @@ os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
 import asyncio
 import json
 import sys
+import argparse
 import torch
 import numpy as np
 import gymnasium as gym
@@ -200,10 +201,20 @@ class WebSocketCoordinator:
 
 coordinator = WebSocketCoordinator()
 
-async def main():
+async def main(difficulty="easy"):
+    raw_env.difficulty = difficulty
+    print(f"Difficulty configured: {difficulty}")
     print("Awaiting connection from Minecraft on ws://localhost:8765...")
     async with serve(coordinator.handle_client, "localhost", 8765, ping_interval=None, ping_timeout=None):
         await asyncio.Future()
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    parser = argparse.ArgumentParser(description="Run the Steve Minecraft PvP PPO server.")
+    parser.add_argument(
+        "--difficulty",
+        type=str,
+        default="easy",
+        help="Difficulty level for bot duel (default: easy)."
+    )
+    args = parser.parse_args()
+    asyncio.run(main(difficulty=args.difficulty))
