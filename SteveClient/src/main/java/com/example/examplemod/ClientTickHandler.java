@@ -215,13 +215,13 @@ public class ClientTickHandler {
         // Swing cooldown/progress
         state.addProperty("swing_cooldown", mc.thePlayer.swingProgress);
 
-        // 2. DISPATCH STATE DATA VECTOR TO PYTHON
-        ws.send(state.toString());
+        // 2. DISPATCH STATE AND SYNCHRONOUSLY WAIT FOR SERVER RESPONSE
+        // This blocks the tick thread until the Python server responds (or 40ms timeout).
+        // Lock-step ensures actions are computed on the CURRENT tick's state, not stale data.
+        JsonObject actions = ws.sendAndWaitForResponse(state.toString(), 40);
 
         // 3. RETRIEVE AND ENFORCE RECEIVED DECISIONS
-        if (ws.latestServerAction != null) {
-            JsonObject actions = ws.latestServerAction;
-            ws.latestServerAction = null; // Consume action so we don't spam it during epoch updates
+        if (actions != null) {
             try {
                 // Parse difficulty if provided by the server
                 if (actions.has("difficulty")) {
