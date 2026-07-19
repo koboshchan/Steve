@@ -246,7 +246,7 @@ class MinecraftPvPEnv(gym.Env):
             components["dmg_dealt"] = dmg * 100.0  # ~+5.0 per half-heart (10.0 per full heart)
 
         # Kill bonus
-        if opp_hp == 1.0 and prev_opp_hp < 0.12:
+        if opp_hp == 1.0 and prev_opp_hp < 0.12 and prev_hp > 0.0 and target_dist is not 999.0:
             components["kill"] = 50.0
 
         # 6. Damage taken
